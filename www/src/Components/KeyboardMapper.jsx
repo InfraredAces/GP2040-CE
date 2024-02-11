@@ -1,9 +1,11 @@
-import React from 'react';
+import { React, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import FormSelect from './FormSelect';
 import { KEY_CODES } from '../Data/Keyboard';
 import { BUTTONS } from '../Data/Buttons';
 import boards from '../Data/Boards.json';
+
+import CaptureKeycodeButton from './CaptureKeycode';
 
 const KeyboardMapper = ({
 	buttonLabels,
@@ -58,6 +60,7 @@ const KeyboardMapper = ({
 									<FormSelect
 										type="number"
 										className="form-select-sm sm-3"
+										name="keyMappingKeycode"
 										value={keyMapping.key}
 										isInvalid={!!keyMapping.error}
 										error={keyMapping.error}
@@ -74,6 +77,23 @@ const KeyboardMapper = ({
 											</option>
 										))}
 									</FormSelect>
+									<CaptureKeycodeButton
+										small
+										labels={[i + 1]}
+										onChange={(label, keycode) => {
+											handleKeyChange(
+												KEY_CODES.find((element) => element.label == keycode)
+													.value
+													? parseInt(
+															KEY_CODES.find(
+																(element) => element.label == keycode,
+															).value,
+													  )
+													: '',
+												button,
+											);
+										}}
+									></CaptureKeycodeButton>
 								</td>
 							</tr>
 						);
