@@ -34,6 +34,7 @@
 #include "addons/rotaryencoder.h"
 #include "addons/i2c_gpio_pcf8575.h"
 #include "addons/drv8833_rumble.h"
+#include "addons/analog_button.h"
 
 #include "CRC32.h"
 #include "FlashPROM.h"
@@ -705,6 +706,9 @@ void ConfigUtils::initUnsetPropertiesWithDefaults(Config& config)
     INIT_UNSET_PROPERTY(config.addonOptions.drv8833RumbleOptions, dutyMin, DRV8833_RUMBLE_DUTY_MIN);
     INIT_UNSET_PROPERTY(config.addonOptions.drv8833RumbleOptions, dutyMax, DRV8833_RUMBLE_DUTY_MAX);
 
+    // addonOptions.analogButtonOption
+    INIT_UNSET_PROPERTY(config.addonOptions.analogButtonOptions, enabled, ANALOG_BUTTON_ENABLED);
+    
     // addonOptions.rotaryOptions
     INIT_UNSET_PROPERTY(config.addonOptions.rotaryOptions, enabled, !!ROTARY_ENCODER_ENABLED);
     INIT_UNSET_PROPERTY(config.addonOptions.rotaryOptions.encoderOne, enabled, !!ENCODER_ONE_ENABLED);

@@ -750,6 +750,11 @@ message DRV8833RumbleOptions
 		optional float dutyMax = 7;
 }
 
+message AnalogButtonOptions
+{
+    optional bool enabled = 1;
+}
+
 message AddonOptions
 {
     optional BootselButtonOptions bootselButtonOptions = 1;
@@ -778,6 +783,7 @@ message AddonOptions
     optional RotaryOptions rotaryOptions = 24;
     optional PCF8575Options pcf8575Options = 25;
     optional DRV8833RumbleOptions drv8833RumbleOptions = 26;
+    optional AnalogButtonOptions analogButtonOptions = 27;
 }
 
 message MigrationHistory

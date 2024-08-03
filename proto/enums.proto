@@ -243,6 +243,12 @@ enum GpioAction
     BUTTON_PRESS_E10             = 52;
     BUTTON_PRESS_E11             = 53;
     BUTTON_PRESS_E12             = 54;
+    ANALOG_DIRECTION_UP          = 55;
+    ANALOG_DIRECTION_DOWN        = 56;
+    ANALOG_DIRECTION_LEFT        = 57;
+    ANALOG_DIRECTION_RIGHT       = 58;
+    ANALOG_TRIGGER_L2            = 59;
+    ANALOG_TRIGGER_R2            = 60;
 }
 
 enum GpioDirection
