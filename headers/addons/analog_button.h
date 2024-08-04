@@ -31,23 +31,23 @@
 #endif
 
 #ifndef ANALOG_BUTTON_00_PIN
-#define ANALOG_BUTTON_00_PIN -1
+#define ANALOG_BUTTON_00_PIN 26
 #endif
 
 #ifndef ANALOG_BUTTON_00_ACTION
-#define ANALOG_BUTTON_00_ACTION GpioAction::ANALOG_DIRECTION_DOWN
+#define ANALOG_BUTTON_00_ACTION GpioAction::ANALOG_DIRECTION_LEFT
 #endif
 
 #ifndef ANALOG_BUTTON_01_PIN
-#define ANALOG_BUTTON_01_PIN -1
+#define ANALOG_BUTTON_01_PIN 27
 #endif
 
 #ifndef ANALOG_BUTTON_01_ACTION
-#define ANALOG_BUTTON_01_ACTION GpioAction::ANALOG_DIRECTION_LEFT
+#define ANALOG_BUTTON_01_ACTION GpioAction::ANALOG_DIRECTION_DOWN
 #endif
 
 #ifndef ANALOG_BUTTON_02_PIN
-#define ANALOG_BUTTON_02_PIN -1
+#define ANALOG_BUTTON_02_PIN 28
 #endif
 
 #ifndef ANALOG_BUTTON_02_ACTION
@@ -70,7 +70,8 @@
 
 struct AnalogButton {
     uint16_t index;
-    uint16_t pin = -1;
+    int pin = -1;
+    GpioMappingInfo gpioMappingInfo;
     uint16_t rawValue = 0;
     uint16_t smaValue = 0;
     uint16_t maxValue = 0;
@@ -85,7 +86,7 @@ struct AnalogButton {
 ---------------------------
 */
 
-#define NUM_ANALOG_BUTTONS 1
+#define NUM_ANALOG_BUTTONS 4
 
 #define AnalogButtonName "AnalogButton"
 
@@ -96,7 +97,24 @@ class AnalogButtonAddon : public GPAddon {
         virtual void preprocess() {}
         virtual void process();
         virtual std::string name() { return AnalogButtonName; }
-    AnalogButton analogButtons[NUM_ANALOG_BUTTONS];
+    private:
+        static void printGpioAction(GpioMappingInfo gpioMappingInfo);
+        void queueAnalogChange(uint16_t analogInput, uint16_t analogValue, uint16_t lastAnalogValue);
+        void updateAnalogState();
+        uint16_t getAverage();
+        AnalogButton analogButtons[NUM_ANALOG_BUTTONS];
+        int buttonPins[NUM_ANALOG_BUTTONS] = {
+            ANALOG_BUTTON_00_PIN, 
+            ANALOG_BUTTON_01_PIN, 
+            ANALOG_BUTTON_02_PIN, 
+            ANALOG_BUTTON_03_PIN
+        };
+        GpioAction buttonActions[NUM_ANALOG_BUTTONS] = {
+            ANALOG_BUTTON_00_ACTION,
+            ANALOG_BUTTON_01_ACTION,
+            ANALOG_BUTTON_02_ACTION,
+            ANALOG_BUTTON_03_ACTION
+        };
 };
 
 #endif
