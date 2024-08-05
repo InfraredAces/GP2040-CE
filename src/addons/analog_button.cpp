@@ -18,7 +18,6 @@ void AnalogButtonAddon::setup() {
 
     const size_t num_adc_pins = NUM_ANALOG_BUTTONS;
 
-    // TODO: Debug GpioAction::ANALOG_DIRECTION_RIGHT not mapping to with analogButtons[i].gpioMappingInfo.action
     for(size_t i = 0; i < num_adc_pins; i++) {
         analogButtons[i].pin = buttonPins[i];
         analogButtons[i].gpioMappingInfo.action = buttonActions[i];
@@ -29,7 +28,7 @@ void AnalogButtonAddon::setup() {
     for(size_t i = 0; i < NUM_ANALOG_BUTTONS; i++) {
         if(isValidPin(analogButtons[i].pin)) {
             adc_gpio_init(analogButtons[i].pin);
-            analogButtons[i].restValue = adc_read();
+            analogButtons[i].restValue = readADCPin(analogButtons[i].pin);
         }
     }
 }
@@ -42,25 +41,36 @@ void AnalogButtonAddon::process() {
 
     for(size_t i = 0; i < NUM_ANALOG_BUTTONS; i++) {
         if(isValidPin(analogButtons[i].pin)) {
-            adc_select_input(analogButtons[i].pin - ADC_PIN_OFFSET);
-            analogButtons[i].rawValue = adc_read();
+            analogButtons[i].rawValue = readADCPin(analogButtons[i].pin);
             // printf("%4u ", analogButtons[i].rawValue);
 
             double value = (float)analogButtons[i].rawValue / (float)analogButtons[i].restValue - 1.0;
 
             switch (analogButtons[i].gpioMappingInfo.action)
             {
-            case GpioAction::ANALOG_DIRECTION_UP:
+            case GpioAction::ANALOG_LS_DIRECTION_UP:
                 gamepad->state.ly = static_cast<uint16_t>(GAMEPAD_JOYSTICK_MAX * (0.5 - clamp(value, 0.0, 0.5)));
                 break;
-            case GpioAction::ANALOG_DIRECTION_DOWN:
+            case GpioAction::ANALOG_LS_DIRECTION_DOWN:
                 gamepad->state.ly = static_cast<uint16_t>(GAMEPAD_JOYSTICK_MAX * (0.5 + clamp(value, 0.0, 0.5)));
                 break;
-            case GpioAction::ANALOG_DIRECTION_LEFT:
+            case GpioAction::ANALOG_LS_DIRECTION_LEFT:
                 gamepad->state.lx = static_cast<uint16_t>(GAMEPAD_JOYSTICK_MAX * (0.5 - clamp(value, 0.0, 0.5)));
                 break;
-            case GpioAction::ANALOG_DIRECTION_RIGHT:
-                gamepad->state.ly = static_cast<uint16_t>(GAMEPAD_JOYSTICK_MAX * (0.5 + clamp(value, 0.0, 0.5)));
+            case GpioAction::ANALOG_LS_DIRECTION_RIGHT:
+                gamepad->state.lx = static_cast<uint16_t>(GAMEPAD_JOYSTICK_MAX * (0.5 + clamp(value, 0.0, 0.5)));
+                break;
+            case GpioAction::ANALOG_RS_DIRECTION_UP:
+                gamepad->state.ry = static_cast<uint16_t>(GAMEPAD_JOYSTICK_MAX * (0.5 - clamp(value, 0.0, 0.5)));
+                break;
+            case GpioAction::ANALOG_RS_DIRECTION_DOWN:
+                gamepad->state.ry = static_cast<uint16_t>(GAMEPAD_JOYSTICK_MAX * (0.5 + clamp(value, 0.0, 0.5)));
+                break;
+            case GpioAction::ANALOG_RS_DIRECTION_LEFT:
+                gamepad->state.rx = static_cast<uint16_t>(GAMEPAD_JOYSTICK_MAX * (0.5 - clamp(value, 0.0, 0.5)));
+                break;
+            case GpioAction::ANALOG_RS_DIRECTION_RIGHT:
+                gamepad->state.rx = static_cast<uint16_t>(GAMEPAD_JOYSTICK_MAX * (0.5 + clamp(value, 0.0, 0.5)));
                 break;
             case GpioAction::ANALOG_TRIGGER_L2:
                 gamepad->state.lt = (GAMEPAD_TRIGGER_MAX * (0.5 + clamp(value, 0.0, 0.5)));
@@ -81,17 +91,29 @@ void AnalogButtonAddon::process() {
 void AnalogButtonAddon::printGpioAction(GpioMappingInfo gpioMappingInfo) {
     switch (gpioMappingInfo.action)
     {
-    case GpioAction::ANALOG_DIRECTION_UP:
-        printf("ANALOG_DIRECTION_UP\n");
+    case GpioAction::ANALOG_LS_DIRECTION_UP:
+        printf("ANALOG_LS_DIRECTION_UP\n");
         break;
-    case GpioAction::ANALOG_DIRECTION_DOWN:
-        printf("ANALOG_DIRECTION_DOWN\n");
+    case GpioAction::ANALOG_LS_DIRECTION_DOWN:
+        printf("ANALOG_LS_DIRECTION_DOWN\n");
         break;
-    case GpioAction::ANALOG_DIRECTION_LEFT:
-        printf("ANALOG_DIRECTION_LEFT\n");
+    case GpioAction::ANALOG_LS_DIRECTION_LEFT:
+        printf("ANALOG_LS_DIRECTION_LEFT\n");
         break;
-    case GpioAction::BUTTON_PRESS_RIGHT:
-        printf("BUTTON_PRESS_RIGHT\n");
+    case GpioAction::ANALOG_LS_DIRECTION_RIGHT:
+        printf("ANALOG_LS_DIRECTION_RIGHT\n");
+        break;
+    case GpioAction::ANALOG_RS_DIRECTION_UP:
+        printf("ANALOG_RS_DIRECTION_UP\n");
+        break;
+    case GpioAction::ANALOG_RS_DIRECTION_DOWN:
+        printf("ANALOG_RS_DIRECTION_DOWN\n");
+        break;
+    case GpioAction::ANALOG_RS_DIRECTION_LEFT:
+        printf("ANALOG_RS_DIRECTION_LEFT\n");
+        break;
+    case GpioAction::ANALOG_RS_DIRECTION_RIGHT:
+        printf("ANALOG_RS_DIRECTION_RIGHT\n");
         break;
     case GpioAction::ANALOG_TRIGGER_L2:
         printf("ANALOG_TRIGGER_L2\n");
@@ -109,11 +131,21 @@ void AnalogButtonAddon::printGpioAction(GpioMappingInfo gpioMappingInfo) {
     }
 }
 
-void AnalogButtonAddon::queueAnalogChange(uint16_t analogInput, uint16_t analogValue, uint16_t lastAnalogValue) {
+uint16_t AnalogButtonAddon::readADCPin(int pin) {
+    adc_select_input(pin - ADC_PIN_OFFSET);
+    return adc_read();
+}
+
+void AnalogButtonAddon::queueAnalogChange(GpioAction gpioAction, uint16_t analogValue, uint16_t lastAnalogValue) {
     
 }
 
 void AnalogButtonAddon::updateAnalogState() {
+    Gamepad * gamepad = Storage::getInstance().GetGamepad();
+    gamepad->hasAnalogTriggers = true;
+
+    uint16_t joystickMid = GAMEPAD_JOYSTICK_MID;
+    uint16_t triggerMid = GAMEPAD_TRIGGER_MID;
 
 }
 

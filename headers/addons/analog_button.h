@@ -35,7 +35,7 @@
 #endif
 
 #ifndef ANALOG_BUTTON_00_ACTION
-#define ANALOG_BUTTON_00_ACTION GpioAction::ANALOG_DIRECTION_LEFT
+#define ANALOG_BUTTON_00_ACTION GpioAction::ANALOG_LS_DIRECTION_LEFT
 #endif
 
 #ifndef ANALOG_BUTTON_01_PIN
@@ -43,7 +43,7 @@
 #endif
 
 #ifndef ANALOG_BUTTON_01_ACTION
-#define ANALOG_BUTTON_01_ACTION GpioAction::ANALOG_DIRECTION_DOWN
+#define ANALOG_BUTTON_01_ACTION GpioAction::ANALOG_LS_DIRECTION_DOWN
 #endif
 
 #ifndef ANALOG_BUTTON_02_PIN
@@ -51,7 +51,7 @@
 #endif
 
 #ifndef ANALOG_BUTTON_02_ACTION
-#define ANALOG_BUTTON_02_ACTION GpioAction::ANALOG_TRIGGER_L2
+#define ANALOG_BUTTON_02_ACTION GpioAction::NONE
 #endif
 
 #ifndef ANALOG_BUTTON_03_PIN
@@ -99,7 +99,8 @@ class AnalogButtonAddon : public GPAddon {
         virtual std::string name() { return AnalogButtonName; }
     private:
         static void printGpioAction(GpioMappingInfo gpioMappingInfo);
-        void queueAnalogChange(uint16_t analogInput, uint16_t analogValue, uint16_t lastAnalogValue);
+        uint16_t readADCPin(int pin);
+        void queueAnalogChange(GpioAction gpioAction, uint16_t analogValue, uint16_t lastAnalogValue);
         void updateAnalogState();
         uint16_t getAverage();
         AnalogButton analogButtons[NUM_ANALOG_BUTTONS];
@@ -114,7 +115,7 @@ class AnalogButtonAddon : public GPAddon {
             ANALOG_BUTTON_01_ACTION,
             ANALOG_BUTTON_02_ACTION,
             ANALOG_BUTTON_03_ACTION
-        };
+        };  
 };
 
 #endif
