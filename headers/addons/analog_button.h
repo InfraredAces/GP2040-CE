@@ -5,6 +5,8 @@
 #include "GamepadEnums.h"
 #include "BoardConfig.h"
 #include "enums.pb.h"
+#include <map>
+#include "lib/AnalogButton/sma_filter.h"
 
 #ifndef ANALOG_BUTTON_ENABLED
 #define ANALOG_BUTTON_ENABLED 1
@@ -30,6 +32,10 @@
 #define ANALOG_BUTTON_RELEASE_THRESHOLD 55
 #endif
 
+#ifndef ANALOG_BUTTON_POLE_ORIENTATION
+#define ANALOG_BUTTON_POLE_ORIENTATION 1
+#endif
+
 #ifndef ANALOG_BUTTON_00_PIN
 #define ANALOG_BUTTON_00_PIN 26
 #endif
@@ -51,7 +57,7 @@
 #endif
 
 #ifndef ANALOG_BUTTON_02_ACTION
-#define ANALOG_BUTTON_02_ACTION GpioAction::NONE
+#define ANALOG_BUTTON_02_ACTION GpioAction::ANALOG_LS_DIRECTION_RIGHT
 #endif
 
 #ifndef ANALOG_BUTTON_03_PIN
@@ -68,16 +74,26 @@
 ---------------------------
 */
 
+#define ANALOG_RESOLUTION 12
+
 struct AnalogButton {
     uint16_t index;
     int pin = -1;
     GpioMappingInfo gpioMappingInfo;
     uint16_t rawValue = 0;
     uint16_t smaValue = 0;
-    uint16_t maxValue = 0;
-    uint16_t restValue = 0;
+    uint16_t restPosition = 0;
+    uint16_t downPosition = (1 << ANALOG_RESOLUTION) - 1;
+    uint16_t distance = 0;
     bool calibrated = false;
     bool pressed = false;
+    SMAFilter filter = SMAFilter(SMA_FILTER_SAMPLE_EXPONENT);
+};
+
+struct AnalogChange {
+    GpioAction gpioAction;
+    uint16_t newValue;
+    uint16_t lastValue;
 };
 
 /*
@@ -87,6 +103,8 @@ struct AnalogButton {
 */
 
 #define NUM_ANALOG_BUTTONS 4
+#define ANALOG_BUTTON_DEADZONE 20
+#define constrain(amt, low, high) ((amt) < (low) ? (low) : ((amt) > (high) ? (high) : (amt)))
 
 #define AnalogButtonName "AnalogButton"
 
@@ -99,10 +117,12 @@ class AnalogButtonAddon : public GPAddon {
         virtual std::string name() { return AnalogButtonName; }
     private:
         static void printGpioAction(GpioMappingInfo gpioMappingInfo);
-        uint16_t readADCPin(int pin);
-        void queueAnalogChange(GpioAction gpioAction, uint16_t analogValue, uint16_t lastAnalogValue);
+        long map(long x, long in_min, long in_max, long out_min, long out_max);
+        void readButton(AnalogButton &button);
+        void queueAnalogChange(GpioAction gpioAction, uint16_t newAnalogValue);
         void updateAnalogState();
         uint16_t getAverage();
+        void updateButtonRange(AnalogButton &button);
         AnalogButton analogButtons[NUM_ANALOG_BUTTONS];
         int buttonPins[NUM_ANALOG_BUTTONS] = {
             ANALOG_BUTTON_00_PIN, 
@@ -116,6 +136,18 @@ class AnalogButtonAddon : public GPAddon {
             ANALOG_BUTTON_02_ACTION,
             ANALOG_BUTTON_03_ACTION
         };  
+        AnalogChange analogChanges[10] = {
+            {GpioAction::ANALOG_LS_DIRECTION_UP, GAMEPAD_JOYSTICK_MID, GAMEPAD_JOYSTICK_MID},
+            {GpioAction::ANALOG_LS_DIRECTION_DOWN, GAMEPAD_JOYSTICK_MID, GAMEPAD_JOYSTICK_MID},
+            {GpioAction::ANALOG_LS_DIRECTION_LEFT, GAMEPAD_JOYSTICK_MID, GAMEPAD_JOYSTICK_MID},
+            {GpioAction::ANALOG_LS_DIRECTION_RIGHT, GAMEPAD_JOYSTICK_MID, GAMEPAD_JOYSTICK_MID},
+            {GpioAction::ANALOG_RS_DIRECTION_UP, GAMEPAD_JOYSTICK_MID, GAMEPAD_JOYSTICK_MID},
+            {GpioAction::ANALOG_RS_DIRECTION_DOWN, GAMEPAD_JOYSTICK_MID, GAMEPAD_JOYSTICK_MID},
+            {GpioAction::ANALOG_RS_DIRECTION_LEFT, GAMEPAD_JOYSTICK_MID, GAMEPAD_JOYSTICK_MID},
+            {GpioAction::ANALOG_RS_DIRECTION_RIGHT, GAMEPAD_JOYSTICK_MID, GAMEPAD_JOYSTICK_MID},
+            {GpioAction::ANALOG_TRIGGER_L2, GAMEPAD_TRIGGER_MID, GAMEPAD_TRIGGER_MID},
+            {GpioAction::ANALOG_TRIGGER_R2, GAMEPAD_TRIGGER_MID, GAMEPAD_TRIGGER_MID},
+        };
 };
 
 #endif

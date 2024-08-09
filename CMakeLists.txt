@@ -245,6 +245,7 @@ CRC32
 FlashPROM
 ADS1219
 ADS1256
+AnalogButton
 PlayerLEDs
 NeoPico
 OneBitDisplay
