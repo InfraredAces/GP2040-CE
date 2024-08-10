@@ -6,29 +6,32 @@
 #include "BoardConfig.h"
 #include "enums.pb.h"
 #include <map>
+#include <queue>
 #include "lib/AnalogButton/sma_filter.h"
 
 #ifndef ANALOG_BUTTON_ENABLED
 #define ANALOG_BUTTON_ENABLED 1
 #endif
 
-// All distances are measured in 0.1mm increments
-
 #ifndef ANALOG_BUTTON_TOTAL_TRAVEL
+// uint16 measured in 0.1mm increments 
 #define ANALOG_BUTTON_TOTAL_TRAVEL 400
 #endif
 
 #ifndef ANALOG_BUTTON_ACTUATION_POINT
+// uint16 measured in 0.1mm increments 
 #define ANALOG_BUTTON_ACTUATION_POINT 150
 #endif
 
-// Distance that the switch need to move downward, when past the actuation point, to register as pressed
+// 
 #ifndef ANALOG_BUTTON_PRESS_THRESHOLD
+/// uint16 measured in 0.1mm increments, Distance that the switch need to move downward, when past the actuation point, to register as pressed
 #define ANALOG_BUTTON_PRESS_THRESHOLD 20
 #endif
 
-// Distance that the switch need to move upward, when past the actuation point, to register as released
+
 #ifndef ANALOG_BUTTON_RELEASE_THRESHOLD
+// uint16 measured in 0.1mm increments, Distance that the switch need to move upward, when past the actuation point, to register as released
 #define ANALOG_BUTTON_RELEASE_THRESHOLD 55
 #endif
 
@@ -65,7 +68,7 @@
 #endif
 
 #ifndef ANALOG_BUTTON_03_ACTION
-#define ANALOG_BUTTON_03_ACTION GpioAction::NONE
+#define ANALOG_BUTTON_03_ACTION GpioAction::ANALOG_LS_DIRECTION_UP
 #endif
 
 /*
@@ -92,8 +95,9 @@ struct AnalogButton {
 
 struct AnalogChange {
     GpioAction gpioAction;
+    uint16_t restPosition;
+    uint16_t downPosition;
     uint16_t newValue;
-    uint16_t lastValue;
 };
 
 /*
@@ -116,10 +120,10 @@ class AnalogButtonAddon : public GPAddon {
         virtual void process();
         virtual std::string name() { return AnalogButtonName; }
     private:
-        static void printGpioAction(GpioMappingInfo gpioMappingInfo);
+        static void printGpioAction(GpioAction gpioAction);
         long map(long x, long in_min, long in_max, long out_min, long out_max);
         void readButton(AnalogButton &button);
-        void queueAnalogChange(GpioAction gpioAction, uint16_t newAnalogValue);
+        void queueAnalogChange(AnalogButton button);
         void updateAnalogState();
         uint16_t getAverage();
         void updateButtonRange(AnalogButton &button);
@@ -135,19 +139,20 @@ class AnalogButtonAddon : public GPAddon {
             ANALOG_BUTTON_01_ACTION,
             ANALOG_BUTTON_02_ACTION,
             ANALOG_BUTTON_03_ACTION
-        };  
-        AnalogChange analogChanges[10] = {
-            {GpioAction::ANALOG_LS_DIRECTION_UP, GAMEPAD_JOYSTICK_MID, GAMEPAD_JOYSTICK_MID},
-            {GpioAction::ANALOG_LS_DIRECTION_DOWN, GAMEPAD_JOYSTICK_MID, GAMEPAD_JOYSTICK_MID},
-            {GpioAction::ANALOG_LS_DIRECTION_LEFT, GAMEPAD_JOYSTICK_MID, GAMEPAD_JOYSTICK_MID},
-            {GpioAction::ANALOG_LS_DIRECTION_RIGHT, GAMEPAD_JOYSTICK_MID, GAMEPAD_JOYSTICK_MID},
-            {GpioAction::ANALOG_RS_DIRECTION_UP, GAMEPAD_JOYSTICK_MID, GAMEPAD_JOYSTICK_MID},
-            {GpioAction::ANALOG_RS_DIRECTION_DOWN, GAMEPAD_JOYSTICK_MID, GAMEPAD_JOYSTICK_MID},
-            {GpioAction::ANALOG_RS_DIRECTION_LEFT, GAMEPAD_JOYSTICK_MID, GAMEPAD_JOYSTICK_MID},
-            {GpioAction::ANALOG_RS_DIRECTION_RIGHT, GAMEPAD_JOYSTICK_MID, GAMEPAD_JOYSTICK_MID},
-            {GpioAction::ANALOG_TRIGGER_L2, GAMEPAD_TRIGGER_MID, GAMEPAD_TRIGGER_MID},
-            {GpioAction::ANALOG_TRIGGER_R2, GAMEPAD_TRIGGER_MID, GAMEPAD_TRIGGER_MID},
         };
+        vector<int> analogActions {
+            GpioAction::ANALOG_LS_DIRECTION_UP,
+            GpioAction::ANALOG_LS_DIRECTION_DOWN,
+            GpioAction::ANALOG_LS_DIRECTION_LEFT,
+            GpioAction::ANALOG_LS_DIRECTION_RIGHT,
+            GpioAction::ANALOG_RS_DIRECTION_UP,
+            GpioAction::ANALOG_RS_DIRECTION_DOWN,
+            GpioAction::ANALOG_RS_DIRECTION_LEFT,
+            GpioAction::ANALOG_RS_DIRECTION_RIGHT,
+            GpioAction::ANALOG_TRIGGER_L2,
+            GpioAction::ANALOG_TRIGGER_R2
+        };
+        queue<AnalogChange> analogChangeQueue;
 };
 
 #endif

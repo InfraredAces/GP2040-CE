@@ -26,7 +26,7 @@ void AnalogButtonAddon::setup()
         analogButtons[i].pin = buttonPins[i];
         analogButtons[i].gpioMappingInfo.action = buttonActions[i];
         printf("Pin: %2u ", analogButtons[i].pin);
-        printGpioAction(analogButtons[i].gpioMappingInfo);
+        printGpioAction(analogButtons[i].gpioMappingInfo.action);
     }
 
     for (size_t i = 0; i < NUM_ANALOG_BUTTONS; i++)
@@ -49,63 +49,24 @@ void AnalogButtonAddon::process()
     {
         if (isValidPin(analogButtons[i].pin))
         {
-            readButton(analogButtons[i]);
-            // printf("%4u ", analogButtons[i].rawValue);
-            // printf("%4u ", analogButtons[i].smaValue);
-            // printf("%4u ", analogButtons[i].restPosition);
-            // printf("%4u ", analogButtons[i].downPosition);
-            printf("%4u ", analogButtons[i].distance);
-
-            // switch (analogButtons[i].gpioMappingInfo.action)
-            // {
-            // case GpioAction::ANALOG_LS_DIRECTION_UP:
-            //     newValue = GAMEPAD_JOYSTICK_MAX * (0.5 + valueChange);
-            //     break;
-            // case GpioAction::ANALOG_LS_DIRECTION_DOWN:
-            //     newValue = GAMEPAD_JOYSTICK_MAX * (0.5 - valueChange);
-            //     break;
-            // case GpioAction::ANALOG_LS_DIRECTION_LEFT:
-            //     newValue = GAMEPAD_JOYSTICK_MAX * (0.5 + valueChange);
-            //     break;
-            // case GpioAction::ANALOG_LS_DIRECTION_RIGHT:
-            //     newValue = GAMEPAD_JOYSTICK_MAX * (0.5 - valueChange);
-            //     break;
-            // case GpioAction::ANALOG_RS_DIRECTION_UP:
-            //     newValue = GAMEPAD_JOYSTICK_MAX * (0.5 + valueChange);
-            //     break;
-            // case GpioAction::ANALOG_RS_DIRECTION_DOWN:
-            //     newValue = GAMEPAD_JOYSTICK_MAX * (0.5 - valueChange);
-            //     break;
-            // case GpioAction::ANALOG_RS_DIRECTION_LEFT:
-            //     newValue = GAMEPAD_JOYSTICK_MAX * (0.5 + valueChange);
-            //     break;
-            // case GpioAction::ANALOG_RS_DIRECTION_RIGHT:
-            //     newValue = GAMEPAD_JOYSTICK_MAX * (0.5 - valueChange);
-            //     break;
-            // case GpioAction::ANALOG_TRIGGER_L2:
-            //     newValue = GAMEPAD_TRIGGER_MAX * (0.5 + valueChange);
-            //     break;
-            // case GpioAction::ANALOG_TRIGGER_R2:
-            //     newValue = GAMEPAD_TRIGGER_MAX * (0.5 + valueChange);
-            //     break;
-            // default:
-            //     // RapidTrigger
-            //     break;
-            // }
-
-            // queueAnalogChange(analogButtons[i].gpioMappingInfo.action, static_cast<uint16_t>(newValue));
+            if(find(analogActions.begin(), analogActions.end(), analogButtons[i].gpioMappingInfo.action) != analogActions.end()) {
+                readButton(analogButtons[i]);
+                queueAnalogChange(analogButtons[i]);
+            } else {
+                // RapidTrigger
+            }
         }
     }
 
-    // updateAnalogState();
+    updateAnalogState();
 
+    // printf("%5u %5u %5u %5u %3u %3u", gamepad->state.lx, gamepad->state.ly, gamepad->state.rx, gamepad->state.ry, gamepad->state.lt, gamepad->state.rt);
     printf("\n");
-    // printf("%5u %5u %5u %5u %3u %3u\n", gamepad->state.lx, gamepad->state.ly, gamepad->state.rx, gamepad->state.ry, gamepad->state.lt, gamepad->state.rt);
 }
 
-void AnalogButtonAddon::printGpioAction(GpioMappingInfo gpioMappingInfo)
+void AnalogButtonAddon::printGpioAction(GpioAction gpioAction)
 {
-    switch (gpioMappingInfo.action)
+    switch (gpioAction)
     {
     case GpioAction::ANALOG_LS_DIRECTION_UP:
         printf("ANALOG_LS_DIRECTION_UP\n");
@@ -173,15 +134,14 @@ void AnalogButtonAddon::readButton(AnalogButton &button)
     button.distance = constrain(map(button.smaValue, button.downPosition, button.restPosition, 0, ANALOG_BUTTON_TOTAL_TRAVEL), 0, ANALOG_BUTTON_TOTAL_TRAVEL);
 }
 
-void AnalogButtonAddon::queueAnalogChange(GpioAction gpioAction, uint16_t newAnalogValue)
-{
-    for (size_t i = 0; i < size(analogChanges); i++)
-    {
-        if (gpioAction == analogChanges[i].gpioAction && newAnalogValue != analogChanges[i].lastValue)
-        {
-            analogChanges[i].newValue = newAnalogValue;
-        }
-    }
+void AnalogButtonAddon::queueAnalogChange(AnalogButton button) {
+    AnalogChange analogChange = {
+        button.gpioMappingInfo.action,
+        button.restPosition,
+        button.downPosition,
+        button.smaValue,
+    };
+    analogChangeQueue.push(analogChange);
 }
 
 void AnalogButtonAddon::updateAnalogState()
@@ -189,39 +149,85 @@ void AnalogButtonAddon::updateAnalogState()
     Gamepad *gamepad = Storage::getInstance().GetGamepad();
     gamepad->hasAnalogTriggers = true;
 
-    uint16_t newLSAnalogValueY = (analogChanges[0].newValue + analogChanges[1].newValue) / 2;
-    uint16_t newLSAnalogValueX = (analogChanges[2].newValue + analogChanges[3].newValue) / 2;
 
-    // printf("%5u ", analogChanges[0].newValue);
-    // printf("%5u ", analogChanges[1].newValue);
-    // printf("%5u ", analogChanges[2].newValue);
-    // printf("%5u ", analogChanges[3].newValue);
+    float joystickMin = (float)GAMEPAD_JOYSTICK_MIN;
+    float joystickMid = (float)GAMEPAD_JOYSTICK_MID;
+    float joystickMax = (float)GAMEPAD_JOYSTICK_MAX;
+    float triggerMin = (float)GAMEPAD_TRIGGER_MIN;
+    float triggerMid = (float)GAMEPAD_TRIGGER_MID;
+    float triggerMax = (float)GAMEPAD_TRIGGER_MAX;
 
-    printf("%5u ", newLSAnalogValueY);
-    printf("%5u ", newLSAnalogValueX);
+    int16_t deltaLY = 0;
+    int16_t deltaLX = 0;
+    int16_t deltaRY = 0;
+    int16_t deltaRX = 0;
+    int16_t deltaLT = 0;
+    int16_t deltaRT = 0;
 
-    gamepad->state.lx = static_cast<uint16_t>(clamp(GAMEPAD_JOYSTICK_MAX * newLSAnalogValueX, GAMEPAD_JOYSTICK_MIN, GAMEPAD_JOYSTICK_MAX));
-    gamepad->state.ly = static_cast<uint16_t>(clamp(GAMEPAD_JOYSTICK_MAX * newLSAnalogValueY, GAMEPAD_JOYSTICK_MIN, GAMEPAD_JOYSTICK_MAX));
+    for (size_t i = 0; i < size(analogChangeQueue); i++) {
+        GpioAction gpioAction = analogChangeQueue.front().gpioAction;
+        int16_t restPosition = analogChangeQueue.front().restPosition;
+        int16_t downPosition = analogChangeQueue.front().downPosition;
+        int16_t newValue = analogChangeQueue.front().newValue;
 
-    uint16_t newRSAnalogValueY = (analogChanges[4].newValue + analogChanges[5].newValue) / 2;
-    uint16_t newRSAnalogValueX = (analogChanges[6].newValue + analogChanges[7].newValue) / 2;
+        float deltaPercent = 0.0;
 
-    // printf("%5u ", analogChanges[4].newValue);
-    // printf("%5u ", analogChanges[5].newValue);
-    // printf("%5u ", analogChanges[6].newValue);
-    // printf("%5u ", analogChanges[7].newValue);
+        //TODO: Update logic to handle multiple buttons assigned to analog directions
+        if ((newValue - downPosition) > ANALOG_BUTTON_DEADZONE) {
+            deltaPercent = constrain((float)(newValue - downPosition) / (float)(restPosition - downPosition), 0.0, 1.0);
+            switch(gpioAction) {
+                case GpioAction::ANALOG_LS_DIRECTION_UP:
+                    deltaLY -= (int16_t)(deltaPercent * joystickMid);
+                    break;
+                case GpioAction::ANALOG_LS_DIRECTION_DOWN:
+                    deltaLY += (int16_t)(deltaPercent * joystickMid);
+                    break;
+                case GpioAction::ANALOG_LS_DIRECTION_LEFT:
+                    deltaLX -= (int16_t)(deltaPercent * joystickMid);
+                    break;
+                case GpioAction::ANALOG_LS_DIRECTION_RIGHT:
+                    deltaLX += (int16_t)(deltaPercent * joystickMid);
+                    break;
+                case GpioAction::ANALOG_RS_DIRECTION_UP:
+                    deltaRY -= (int16_t)(deltaPercent * joystickMid);
+                    break;
+                case GpioAction::ANALOG_RS_DIRECTION_DOWN:
+                    deltaRY += (int16_t)(deltaPercent * joystickMid);
+                    break;
+                case GpioAction::ANALOG_RS_DIRECTION_LEFT:
+                    deltaRX -= (int16_t)(deltaPercent * joystickMid);
+                    break;
+                case GpioAction::ANALOG_RS_DIRECTION_RIGHT:
+                    deltaRX += (int16_t)(deltaPercent * joystickMid);
+                    break;
+                case GpioAction::ANALOG_TRIGGER_L2:
+                    if(deltaLT == 0) {
+                        deltaLT = (int16_t)(deltaPercent * triggerMax);
+                    } else if (deltaLT > 0) {
+                        deltaLT = (int16_t)((deltaLT + (deltaPercent * triggerMax)) / 2.0);
+                    }
+                    break;
+                case GpioAction::ANALOG_TRIGGER_R2:
+                    if(deltaRT == 0) {
+                        deltaRT = (int16_t)(deltaPercent * triggerMax);
+                    } else if (deltaRT > 0) {
+                        deltaRT = (int16_t)((deltaRT +  (deltaPercent * triggerMax)) / 2.0);
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
 
-    printf("%5u ", newRSAnalogValueY);
-    printf("%5u ", newRSAnalogValueX);
+        gamepad->state.ly = constrain((int16_t)GAMEPAD_JOYSTICK_MID + deltaLY, GAMEPAD_JOYSTICK_MIN, GAMEPAD_JOYSTICK_MAX);
+        gamepad->state.lx = constrain((int16_t)GAMEPAD_JOYSTICK_MID + deltaLX, GAMEPAD_JOYSTICK_MIN, GAMEPAD_JOYSTICK_MAX);
+        gamepad->state.ry = constrain((int16_t)GAMEPAD_JOYSTICK_MID + deltaRY, GAMEPAD_JOYSTICK_MIN, GAMEPAD_JOYSTICK_MAX);
+        gamepad->state.rx = constrain((int16_t)GAMEPAD_JOYSTICK_MID + deltaRX, GAMEPAD_JOYSTICK_MIN, GAMEPAD_JOYSTICK_MAX);
+        gamepad->state.lt = constrain((int16_t)GAMEPAD_TRIGGER_MIN + deltaLT, GAMEPAD_TRIGGER_MIN, GAMEPAD_TRIGGER_MAX);
+        gamepad->state.rt = constrain((int16_t)GAMEPAD_TRIGGER_MIN + deltaRT, GAMEPAD_TRIGGER_MIN, GAMEPAD_TRIGGER_MAX);
 
-    gamepad->state.rx = static_cast<uint16_t>(clamp(GAMEPAD_JOYSTICK_MAX * newRSAnalogValueX, GAMEPAD_JOYSTICK_MIN, GAMEPAD_JOYSTICK_MAX));
-    gamepad->state.ry = static_cast<uint16_t>(clamp(GAMEPAD_JOYSTICK_MAX * newRSAnalogValueY, GAMEPAD_JOYSTICK_MIN, GAMEPAD_JOYSTICK_MAX));
-}
-
-uint16_t AnalogButtonAddon::getAverage()
-{
-    uint16_t values = 0;
-    return values;
+        analogChangeQueue.pop();
+    }
 }
 
 void AnalogButtonAddon::updateButtonRange(AnalogButton &button)
