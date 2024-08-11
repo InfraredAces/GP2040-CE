@@ -11,12 +11,10 @@
 
 #define ADC_PIN_OFFSET 26
 
-bool AnalogButtonAddon::available()
-{
+bool AnalogButtonAddon::available() {
     return Storage::getInstance().getAddonOptions().analogButtonOptions.enabled;
 }
-void AnalogButtonAddon::setup()
-{
+void AnalogButtonAddon::setup() {
     stdio_init_all();
 
     const size_t num_adc_pins = NUM_ANALOG_BUTTONS;
@@ -38,9 +36,7 @@ void AnalogButtonAddon::setup()
     }
 }
 
-void AnalogButtonAddon::process()
-{
-
+void AnalogButtonAddon::process() {
     const AnalogButtonOptions &analogButtonOptions = Storage::getInstance().getAddonOptions().analogButtonOptions;
     Gamepad *gamepad = Storage::getInstance().GetGamepad();
     gamepad->hasAnalogTriggers = true;
@@ -49,23 +45,25 @@ void AnalogButtonAddon::process()
     {
         if (isValidPin(analogButtons[i].pin))
         {
-            if(find(analogActions.begin(), analogActions.end(), analogButtons[i].gpioMappingInfo.action) != analogActions.end()) {
-                readButton(analogButtons[i]);
-                queueAnalogChange(analogButtons[i]);
-            } else {
-                // RapidTrigger
+            readButton(analogButtons[i]);
+            if (analogButtons[i].calibrated){
+                if(find(analogActions.begin(), analogActions.end(), analogButtons[i].gpioMappingInfo.action) != analogActions.end()) {
+                    queueAnalogChange(analogButtons[i]);
+                } else {
+                 processDigitalButton(analogButtons[i]);
             }
+
+            }
+            
         }
     }
 
     updateAnalogState();
 
-    // printf("%5u %5u %5u %5u %3u %3u", gamepad->state.lx, gamepad->state.ly, gamepad->state.rx, gamepad->state.ry, gamepad->state.lt, gamepad->state.rt);
     printf("\n");
 }
 
-void AnalogButtonAddon::printGpioAction(GpioAction gpioAction)
-{
+void AnalogButtonAddon::printGpioAction(GpioAction gpioAction) {
     switch (gpioAction)
     {
     case GpioAction::ANALOG_LS_DIRECTION_UP:
@@ -112,8 +110,7 @@ long AnalogButtonAddon::map(long x, long in_min, long in_max, long out_min, long
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
-void AnalogButtonAddon::readButton(AnalogButton &button)
-{
+void AnalogButtonAddon::readButton(AnalogButton &button) {
     adc_select_input(button.pin - ADC_PIN_OFFSET);
     button.rawValue = adc_read();
     button.smaValue = button.filter(button.rawValue);
@@ -132,6 +129,8 @@ void AnalogButtonAddon::readButton(AnalogButton &button)
     }
 
     button.distance = constrain(map(button.smaValue, button.downPosition, button.restPosition, 0, ANALOG_BUTTON_TOTAL_TRAVEL), 0, ANALOG_BUTTON_TOTAL_TRAVEL);
+
+    printf("%1.2fmm ", (float)button.distance / 100.0);
 }
 
 void AnalogButtonAddon::queueAnalogChange(AnalogButton button) {
@@ -144,8 +143,7 @@ void AnalogButtonAddon::queueAnalogChange(AnalogButton button) {
     analogChangeQueue.push(analogChange);
 }
 
-void AnalogButtonAddon::updateAnalogState()
-{
+void AnalogButtonAddon::updateAnalogState() {
     Gamepad *gamepad = Storage::getInstance().GetGamepad();
     gamepad->hasAnalogTriggers = true;
 
@@ -227,11 +225,12 @@ void AnalogButtonAddon::updateAnalogState()
         gamepad->state.rt = constrain((int16_t)GAMEPAD_TRIGGER_MIN + deltaRT, GAMEPAD_TRIGGER_MIN, GAMEPAD_TRIGGER_MAX);
 
         analogChangeQueue.pop();
+
+        // printf("%5u %5u %5u %5u %3u %3u", gamepad->state.lx, gamepad->state.ly, gamepad->state.rx, gamepad->state.ry, gamepad->state.lt, gamepad->state.rt);
     }
 }
 
-void AnalogButtonAddon::updateButtonRange(AnalogButton &button)
-{
+void AnalogButtonAddon::updateButtonRange(AnalogButton &button) {
     // Calculate the value with the deadzone in the positive and negative direction applied.
     uint16_t upperValue = button.smaValue - ANALOG_BUTTON_DEADZONE;
     uint16_t lowerValue = button.smaValue + ANALOG_BUTTON_DEADZONE;
@@ -248,4 +247,134 @@ void AnalogButtonAddon::updateButtonRange(AnalogButton &button)
 
         button.downPosition = lowerValue;
     }
+}
+
+void AnalogButtonAddon::processDigitalButton(AnalogButton &button) {
+    const AnalogButtonOptions &analogButtonOptions = Storage::getInstance().getAddonOptions().analogButtonOptions;
+    Gamepad *gamepad = Storage::getInstance().GetGamepad();
+
+    switch (ANALOG_BUTTON_TRIGGER_MODE) {
+        case AnalogTriggerMode::STATIC_TRIGGER:
+            if(button.distance > ANALOG_BUTTON_ACTUATION_POINT) {
+                triggerButtonPress(button);
+            }
+            break;
+        default:
+            rapidTrigger(button);
+            break;
+    }
+}
+
+void AnalogButtonAddon::rapidTrigger(AnalogButton &button) {
+    // Reset RapidTrigger state if button leaves the rapid trigger zone
+
+    switch(ANALOG_BUTTON_TRIGGER_MODE) {
+        case AnalogTriggerMode::RAPID_TRIGGER:
+            if (button.distance <= ANALOG_BUTTON_ACTUATION_POINT - ANALOG_BUTTON_RELEASE_THRESHOLD) {
+                button.inRapidTriggerZone = false;
+            }
+            break;
+        case AnalogTriggerMode::CONTINUOUS_RAPID_TRIGGER:
+            if (button.distance <= CONTINUOUS_RAPID_THRESHOLD) {
+                button.inRapidTriggerZone = false;
+            }
+            break;
+    }
+
+    if (button.distance >= ANALOG_BUTTON_ACTUATION_POINT && !button.inRapidTriggerZone) {
+        button.inRapidTriggerZone = true;
+        button.pressed = true;
+    } else if (!button.pressed && button.inRapidTriggerZone && button.distance >= button.localMax + ANALOG_BUTTON_PRESS_THRESHOLD) {
+        button.pressed = true;
+    } else if (button.pressed && (!button.inRapidTriggerZone || button.distance <= button.localMax - ANALOG_BUTTON_RELEASE_THRESHOLD)) {
+        button.pressed = false;
+    }
+
+    if ((button.pressed && button.distance > button.localMax) || (!button.pressed && button.distance < button.localMax)) {
+        button.localMax = button.distance;
+    }
+
+    if(button.pressed) {
+        printf("pressed ");
+        triggerButtonPress(button);
+    } else {
+        printf("ready   ");
+    }
+}
+
+void AnalogButtonAddon::triggerButtonPress(AnalogButton button) {
+    const AnalogButtonOptions &analogButtonOptions = Storage::getInstance().getAddonOptions().analogButtonOptions;
+    Gamepad *gamepad = Storage::getInstance().GetGamepad();
+
+    //TODO: Add SOCD Cleaning to DPad inputs
+    const SOCDMode socdMode = getSOCDMode(gamepad->getOptions());
+
+    switch (button.gpioMappingInfo.action) {
+        case GpioAction::BUTTON_PRESS_UP:
+            gamepad->state.dpad |= GAMEPAD_MASK_UP;
+            break;
+        case GpioAction::BUTTON_PRESS_DOWN:
+            gamepad->state.dpad |= GAMEPAD_MASK_DOWN;
+            break;
+        case GpioAction::BUTTON_PRESS_LEFT:
+            gamepad->state.dpad |= GAMEPAD_MASK_LEFT;
+            break;
+        case GpioAction::BUTTON_PRESS_RIGHT:
+            gamepad->state.dpad |= GAMEPAD_MASK_RIGHT;
+            break;
+        case GpioAction::BUTTON_PRESS_B1:
+            gamepad->state.buttons |= GAMEPAD_MASK_B1;
+            break;
+        case GpioAction::BUTTON_PRESS_B2:
+            gamepad->state.buttons |= GAMEPAD_MASK_B2;
+            break;
+        case GpioAction::BUTTON_PRESS_B3:
+            gamepad->state.buttons |= GAMEPAD_MASK_B3;
+            break;
+        case GpioAction::BUTTON_PRESS_B4:
+            gamepad->state.buttons |= GAMEPAD_MASK_B4;
+            break;
+        case GpioAction::BUTTON_PRESS_L1:
+            gamepad->state.buttons |= GAMEPAD_MASK_L1;
+            break;
+        case GpioAction::BUTTON_PRESS_R1:
+            gamepad->state.buttons |= GAMEPAD_MASK_R1;
+            break;
+        case GpioAction::BUTTON_PRESS_L2:
+            gamepad->state.buttons |= GAMEPAD_MASK_L2;
+            break;
+        case GpioAction::BUTTON_PRESS_R2:
+            gamepad->state.buttons |= GAMEPAD_MASK_R2;
+            break;
+        case GpioAction::BUTTON_PRESS_S1:
+            gamepad->state.buttons |= GAMEPAD_MASK_S1;
+            break;
+        case GpioAction::BUTTON_PRESS_S2:
+            gamepad->state.buttons |= GAMEPAD_MASK_S2;
+            break;
+        case GpioAction::BUTTON_PRESS_L3:
+            gamepad->state.buttons |= GAMEPAD_MASK_L3;
+            break;
+        case GpioAction::BUTTON_PRESS_R3:
+            gamepad->state.buttons |= GAMEPAD_MASK_R3;
+            break;
+        case GpioAction::BUTTON_PRESS_A1:
+            gamepad->state.buttons |= GAMEPAD_MASK_A1;
+            break;
+        case GpioAction::BUTTON_PRESS_A2:
+            gamepad->state.buttons |= GAMEPAD_MASK_A2;
+            break;
+        case GpioAction::BUTTON_PRESS_FN:
+            gamepad->state.buttons |= AUX_MASK_FUNCTION;
+            break;
+        default:
+            break;
+    }
+}
+
+void AnalogButtonAddon::SOCDClean(SOCDMode socdMode) { 
+}
+
+const SOCDMode AnalogButtonAddon::getSOCDMode(const GamepadOptions& options) {
+    return Gamepad::resolveSOCDMode(options);
 }

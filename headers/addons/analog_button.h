@@ -23,7 +23,15 @@
 #define ANALOG_BUTTON_ACTUATION_POINT 150
 #endif
 
-// 
+#ifndef ANALOG_BUTTON_TRIGGER_MODE
+#define ANALOG_BUTTON_TRIGGER_MODE AnalogTriggerMode::RAPID_TRIGGER
+#endif
+
+#ifndef CONTINUOUS_RAPID_THRESHOLD
+/// uint16 measured in 0.1mm increments, Distance that the switch need to move downward, when past the actuation point, to register as pressed
+#define CONTINUOUS_RAPID_THRESHOLD 0
+#endif
+
 #ifndef ANALOG_BUTTON_PRESS_THRESHOLD
 /// uint16 measured in 0.1mm increments, Distance that the switch need to move downward, when past the actuation point, to register as pressed
 #define ANALOG_BUTTON_PRESS_THRESHOLD 20
@@ -32,7 +40,7 @@
 
 #ifndef ANALOG_BUTTON_RELEASE_THRESHOLD
 // uint16 measured in 0.1mm increments, Distance that the switch need to move upward, when past the actuation point, to register as released
-#define ANALOG_BUTTON_RELEASE_THRESHOLD 55
+#define ANALOG_BUTTON_RELEASE_THRESHOLD 20
 #endif
 
 #ifndef ANALOG_BUTTON_POLE_ORIENTATION
@@ -44,7 +52,7 @@
 #endif
 
 #ifndef ANALOG_BUTTON_00_ACTION
-#define ANALOG_BUTTON_00_ACTION GpioAction::ANALOG_LS_DIRECTION_LEFT
+#define ANALOG_BUTTON_00_ACTION GpioAction::BUTTON_PRESS_B2
 #endif
 
 #ifndef ANALOG_BUTTON_01_PIN
@@ -71,6 +79,14 @@
 #define ANALOG_BUTTON_03_ACTION GpioAction::ANALOG_LS_DIRECTION_UP
 #endif
 
+#ifndef ANALOG_BUTTON_0_PIN
+#define ANALOG_BUTTON_0_PIN -1
+#endif
+
+#ifndef ANALOG_BUTTON_0_ACTION
+#define ANALOG_BUTTON_0_ACTION GpioAction::NONE
+#endif
+
 /*
 ---------------------------
   Analog Button State
@@ -88,8 +104,10 @@ struct AnalogButton {
     uint16_t restPosition = 0;
     uint16_t downPosition = (1 << ANALOG_RESOLUTION) - 1;
     uint16_t distance = 0;
+    uint16_t localMax = ANALOG_BUTTON_TOTAL_TRAVEL;
     bool calibrated = false;
     bool pressed = false;
+    bool inRapidTriggerZone = false;
     SMAFilter filter = SMAFilter(SMA_FILTER_SAMPLE_EXPONENT);
 };
 
@@ -127,6 +145,11 @@ class AnalogButtonAddon : public GPAddon {
         void updateAnalogState();
         uint16_t getAverage();
         void updateButtonRange(AnalogButton &button);
+        void processDigitalButton(AnalogButton &button);
+        void triggerButtonPress(AnalogButton button);
+        void rapidTrigger(AnalogButton &button);
+        void SOCDClean(SOCDMode socdMode);
+        const SOCDMode getSOCDMode(const GamepadOptions &options);
         AnalogButton analogButtons[NUM_ANALOG_BUTTONS];
         int buttonPins[NUM_ANALOG_BUTTONS] = {
             ANALOG_BUTTON_00_PIN, 
