@@ -10,6 +10,7 @@
 #include "analog_button.h"
 
 #define ADC_PIN_OFFSET 26
+#define NUM_ADC_PINS 4
 
 bool AnalogButtonAddon::available() {
     return Storage::getInstance().getAddonOptions().analogButtonOptions.enabled;
@@ -17,9 +18,7 @@ bool AnalogButtonAddon::available() {
 void AnalogButtonAddon::setup() {
     stdio_init_all();
 
-    const size_t num_adc_pins = NUM_ANALOG_BUTTONS;
-
-    for (size_t i = 0; i < num_adc_pins; i++)
+    for (size_t i = 0; i < NUM_ADC_PINS; i++)
     {
         analogButtons[i].pin = buttonPins[i];
         analogButtons[i].gpioMappingInfo.action = buttonActions[i];
@@ -27,7 +26,7 @@ void AnalogButtonAddon::setup() {
         printGpioAction(analogButtons[i].gpioMappingInfo.action);
     }
 
-    for (size_t i = 0; i < NUM_ANALOG_BUTTONS; i++)
+    for (size_t i = 0; i < NUM_ADC_PINS; i++)
     {
         if (isValidPin(analogButtons[i].pin))
         {
@@ -41,7 +40,7 @@ void AnalogButtonAddon::process() {
     Gamepad *gamepad = Storage::getInstance().GetGamepad();
     gamepad->hasAnalogTriggers = true;
 
-    for (size_t i = 0; i < NUM_ANALOG_BUTTONS; i++)
+    for (size_t i = 0; i < NUM_ADC_PINS; i++)
     {
         if (isValidPin(analogButtons[i].pin))
         {
@@ -59,6 +58,8 @@ void AnalogButtonAddon::process() {
     }
 
     updateAnalogState();
+
+    // printf("%5u %5u %5u %5u %3u %3u", gamepad->state.lx, gamepad->state.ly, gamepad->state.rx, gamepad->state.ry, gamepad->state.lt, gamepad->state.rt);
 
     printf("\n");
 }
@@ -115,7 +116,7 @@ void AnalogButtonAddon::readButton(AnalogButton &button) {
     button.rawValue = adc_read();
     button.smaValue = button.filter(button.rawValue);
 
-    if (ANALOG_BUTTON_POLE_ORIENTATION == -1) {
+    if (ANALOG_BUTTON_POLE_SENSOR_ORIENTATION == -1) {
         button.smaValue = (1 << ANALOG_RESOLUTION) - 1 - button.smaValue;
     }
 
@@ -130,7 +131,7 @@ void AnalogButtonAddon::readButton(AnalogButton &button) {
 
     button.distance = constrain(map(button.smaValue, button.downPosition, button.restPosition, 0, ANALOG_BUTTON_TOTAL_TRAVEL), 0, ANALOG_BUTTON_TOTAL_TRAVEL);
 
-    printf("%1.2fmm ", (float)button.distance / 100.0);
+    // printf("%1.2fmm ", (float)button.distance / 100.0);
 }
 
 void AnalogButtonAddon::queueAnalogChange(AnalogButton button) {
@@ -147,10 +148,7 @@ void AnalogButtonAddon::updateAnalogState() {
     Gamepad *gamepad = Storage::getInstance().GetGamepad();
     gamepad->hasAnalogTriggers = true;
 
-
-    float joystickMin = (float)GAMEPAD_JOYSTICK_MIN;
     float joystickMid = (float)GAMEPAD_JOYSTICK_MID;
-    float joystickMax = (float)GAMEPAD_JOYSTICK_MAX;
     float triggerMin = (float)GAMEPAD_TRIGGER_MIN;
     float triggerMid = (float)GAMEPAD_TRIGGER_MID;
     float triggerMax = (float)GAMEPAD_TRIGGER_MAX;
@@ -161,6 +159,13 @@ void AnalogButtonAddon::updateAnalogState() {
     int16_t deltaRX = 0;
     int16_t deltaLT = 0;
     int16_t deltaRT = 0;
+
+    float deltaPercentLY = 0;
+    float deltaPercentLX = 0;
+    float deltaPercentRY = 0;
+    float deltaPercentRX = 0;
+    float deltaPercentLT = 0;
+    float deltaPercentRT = 0;
 
     for (size_t i = 0; i < size(analogChangeQueue); i++) {
         GpioAction gpioAction = analogChangeQueue.front().gpioAction;
@@ -175,28 +180,28 @@ void AnalogButtonAddon::updateAnalogState() {
             deltaPercent = constrain((float)(newValue - downPosition) / (float)(restPosition - downPosition), 0.0, 1.0);
             switch(gpioAction) {
                 case GpioAction::ANALOG_LS_DIRECTION_UP:
-                    deltaLY -= (int16_t)(deltaPercent * joystickMid);
+                    deltaPercentLY -= deltaPercent;
                     break;
                 case GpioAction::ANALOG_LS_DIRECTION_DOWN:
-                    deltaLY += (int16_t)(deltaPercent * joystickMid);
+                    deltaPercentLY += deltaPercent;
                     break;
                 case GpioAction::ANALOG_LS_DIRECTION_LEFT:
-                    deltaLX -= (int16_t)(deltaPercent * joystickMid);
+                    deltaPercentLX -= deltaPercent;
                     break;
                 case GpioAction::ANALOG_LS_DIRECTION_RIGHT:
-                    deltaLX += (int16_t)(deltaPercent * joystickMid);
+                    deltaPercentLX += deltaPercent;
                     break;
                 case GpioAction::ANALOG_RS_DIRECTION_UP:
-                    deltaRY -= (int16_t)(deltaPercent * joystickMid);
+                    deltaPercentRY -= deltaPercent;
                     break;
                 case GpioAction::ANALOG_RS_DIRECTION_DOWN:
-                    deltaRY += (int16_t)(deltaPercent * joystickMid);
+                    deltaPercentRY += deltaPercent;
                     break;
                 case GpioAction::ANALOG_RS_DIRECTION_LEFT:
-                    deltaRX -= (int16_t)(deltaPercent * joystickMid);
+                    deltaPercentRX -= deltaPercent;
                     break;
                 case GpioAction::ANALOG_RS_DIRECTION_RIGHT:
-                    deltaRX += (int16_t)(deltaPercent * joystickMid);
+                    deltaPercentRX += deltaPercent;
                     break;
                 case GpioAction::ANALOG_TRIGGER_L2:
                     if(deltaLT == 0) {
@@ -217,17 +222,43 @@ void AnalogButtonAddon::updateAnalogState() {
             }
         }
 
-        gamepad->state.ly = constrain((int16_t)GAMEPAD_JOYSTICK_MID + deltaLY, GAMEPAD_JOYSTICK_MIN, GAMEPAD_JOYSTICK_MAX);
-        gamepad->state.lx = constrain((int16_t)GAMEPAD_JOYSTICK_MID + deltaLX, GAMEPAD_JOYSTICK_MIN, GAMEPAD_JOYSTICK_MAX);
-        gamepad->state.ry = constrain((int16_t)GAMEPAD_JOYSTICK_MID + deltaRY, GAMEPAD_JOYSTICK_MIN, GAMEPAD_JOYSTICK_MAX);
-        gamepad->state.rx = constrain((int16_t)GAMEPAD_JOYSTICK_MID + deltaRX, GAMEPAD_JOYSTICK_MIN, GAMEPAD_JOYSTICK_MAX);
-        gamepad->state.lt = constrain((int16_t)GAMEPAD_TRIGGER_MIN + deltaLT, GAMEPAD_TRIGGER_MIN, GAMEPAD_TRIGGER_MAX);
-        gamepad->state.rt = constrain((int16_t)GAMEPAD_TRIGGER_MIN + deltaRT, GAMEPAD_TRIGGER_MIN, GAMEPAD_TRIGGER_MAX);
-
         analogChangeQueue.pop();
-
-        // printf("%5u %5u %5u %5u %3u %3u", gamepad->state.lx, gamepad->state.ly, gamepad->state.rx, gamepad->state.ry, gamepad->state.lt, gamepad->state.rt);
     }
+
+    float magnitudeLXY = sqrt((deltaPercentLX * deltaPercentLX) + (deltaPercentLY * deltaPercentLY));
+    float magnitudeRXY = sqrt((deltaPercentRX * deltaPercentRX) + (deltaPercentRY * deltaPercentRY));
+
+    if (ANALOG_BUTTON_ENFORCE_CIRCULARITY == 1) {
+        if (magnitudeLXY > 1.0) {
+            scaleVector(deltaPercentLX, deltaPercentLY, 0.0, sqrt(2.0), 0.0, 1.0);
+        } else if (magnitudeRXY > 1.0) {
+            scaleVector(deltaPercentRX, deltaPercentRY, 0.0, sqrt(2.0), 0.0, 1.0);
+        }
+    }
+
+    deltaLY = (int16_t)(deltaPercentLY * joystickMid);
+    deltaLX = (int16_t)(deltaPercentLX * joystickMid);
+    deltaRY = (int16_t)(deltaPercentRY * joystickMid);
+    deltaRX = (int16_t)(deltaPercentRX * joystickMid);        
+
+    gamepad->state.ly = constrain((int16_t)GAMEPAD_JOYSTICK_MID + deltaLY, GAMEPAD_JOYSTICK_MIN, GAMEPAD_JOYSTICK_MAX);
+    gamepad->state.lx = constrain((int16_t)GAMEPAD_JOYSTICK_MID + deltaLX, GAMEPAD_JOYSTICK_MIN, GAMEPAD_JOYSTICK_MAX);
+    gamepad->state.ry = constrain((int16_t)GAMEPAD_JOYSTICK_MID + deltaRY, GAMEPAD_JOYSTICK_MIN, GAMEPAD_JOYSTICK_MAX);
+    gamepad->state.rx = constrain((int16_t)GAMEPAD_JOYSTICK_MID + deltaRX, GAMEPAD_JOYSTICK_MIN, GAMEPAD_JOYSTICK_MAX);
+    gamepad->state.lt = constrain((int16_t)GAMEPAD_TRIGGER_MIN + deltaLT, GAMEPAD_TRIGGER_MIN, GAMEPAD_TRIGGER_MAX);
+    gamepad->state.rt = constrain((int16_t)GAMEPAD_TRIGGER_MIN + deltaRT, GAMEPAD_TRIGGER_MIN, GAMEPAD_TRIGGER_MAX);
+
+}
+
+void AnalogButtonAddon::scaleVector(float &x, float &y, float magnitudeMin, float magnitudeMax, float scaleMin, float scaleMax) {
+    float angle = atan2(y, x);
+    float xy_magnitude = sqrt((x * x) + (y * y));
+    float scaledMagnitude = (xy_magnitude - magnitudeMin) / (magnitudeMax - magnitudeMin);
+
+    printf("%1.4f ", xy_magnitude);
+    
+    x = x / xy_magnitude;
+    y = y / xy_magnitude;
 }
 
 void AnalogButtonAddon::updateButtonRange(AnalogButton &button) {
@@ -266,14 +297,16 @@ void AnalogButtonAddon::processDigitalButton(AnalogButton &button) {
 }
 
 void AnalogButtonAddon::rapidTrigger(AnalogButton &button) {
-    // Reset RapidTrigger state if button leaves the rapid trigger zone
 
+    // Reset RapidTrigger state if button leaves the rapid trigger zone
     switch(ANALOG_BUTTON_TRIGGER_MODE) {
+        // Reset once past actuation point
         case AnalogTriggerMode::RAPID_TRIGGER:
             if (button.distance <= ANALOG_BUTTON_ACTUATION_POINT - ANALOG_BUTTON_RELEASE_THRESHOLD) {
                 button.inRapidTriggerZone = false;
             }
             break;
+        // Reset once fully released
         case AnalogTriggerMode::CONTINUOUS_RAPID_TRIGGER:
             if (button.distance <= CONTINUOUS_RAPID_THRESHOLD) {
                 button.inRapidTriggerZone = false;
@@ -281,25 +314,31 @@ void AnalogButtonAddon::rapidTrigger(AnalogButton &button) {
             break;
     }
 
+    // Press and set in RTZ once past actuation point
     if (button.distance >= ANALOG_BUTTON_ACTUATION_POINT && !button.inRapidTriggerZone) {
         button.inRapidTriggerZone = true;
         button.pressed = true;
+
+    // Press if button is in RTZ and has moved sufficiently downwards to trigger again
     } else if (!button.pressed && button.inRapidTriggerZone && button.distance >= button.localMax + ANALOG_BUTTON_PRESS_THRESHOLD) {
         button.pressed = true;
+
+    // Release button if either not in RTZ or is in RTZ, but has moved sufficiently upwards
     } else if (button.pressed && (!button.inRapidTriggerZone || button.distance <= button.localMax - ANALOG_BUTTON_RELEASE_THRESHOLD)) {
         button.pressed = false;
     }
 
+    // Updates maximum distance for calculating whether button should trigger again after releasing 
     if ((button.pressed && button.distance > button.localMax) || (!button.pressed && button.distance < button.localMax)) {
         button.localMax = button.distance;
     }
 
-    if(button.pressed) {
-        printf("pressed ");
-        triggerButtonPress(button);
-    } else {
-        printf("ready   ");
-    }
+    // if(button.pressed) {
+    //     printf("pressed ");
+    //     triggerButtonPress(button);
+    // } else {
+    //     printf("ready   ");
+    // }
 }
 
 void AnalogButtonAddon::triggerButtonPress(AnalogButton button) {

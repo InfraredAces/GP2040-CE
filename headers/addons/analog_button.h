@@ -28,23 +28,28 @@
 #endif
 
 #ifndef CONTINUOUS_RAPID_THRESHOLD
-/// uint16 measured in 0.1mm increments, Distance that the switch need to move downward, when past the actuation point, to register as pressed
+/// uint16 measured in 0.1mm increments, Distance from rest position for disabling rapid trigger state
 #define CONTINUOUS_RAPID_THRESHOLD 0
 #endif
 
 #ifndef ANALOG_BUTTON_PRESS_THRESHOLD
-/// uint16 measured in 0.1mm increments, Distance that the switch need to move downward, when past the actuation point, to register as pressed
+/// uint16 measured in 0.1mm increments, Downward distance required when ready to actuate switch
 #define ANALOG_BUTTON_PRESS_THRESHOLD 20
 #endif
 
 
 #ifndef ANALOG_BUTTON_RELEASE_THRESHOLD
-// uint16 measured in 0.1mm increments, Distance that the switch need to move upward, when past the actuation point, to register as released
+/// uint16 measured in 0.1mm increments, Upward distance required while pressed to deactivate switch
 #define ANALOG_BUTTON_RELEASE_THRESHOLD 20
 #endif
 
-#ifndef ANALOG_BUTTON_POLE_ORIENTATION
-#define ANALOG_BUTTON_POLE_ORIENTATION 1
+#ifndef ANALOG_BUTTON_POLE_SENSOR_ORIENTATION
+// -1 or 1, Orientation of magnet and sensor relative to one another, Flip if unexpected behavior occurs
+#define ANALOG_BUTTON_POLE_SENSOR_ORIENTATION 1
+#endif
+
+#ifndef ANALOG_BUTTON_ENFORCE_CIRCULARITY
+#define ANALOG_BUTTON_ENFORCE_CIRCULARITY 0
 #endif
 
 #ifndef ANALOG_BUTTON_00_PIN
@@ -52,7 +57,7 @@
 #endif
 
 #ifndef ANALOG_BUTTON_00_ACTION
-#define ANALOG_BUTTON_00_ACTION GpioAction::BUTTON_PRESS_B2
+#define ANALOG_BUTTON_00_ACTION GpioAction::ANALOG_LS_DIRECTION_LEFT
 #endif
 
 #ifndef ANALOG_BUTTON_01_PIN
@@ -143,6 +148,7 @@ class AnalogButtonAddon : public GPAddon {
         void readButton(AnalogButton &button);
         void queueAnalogChange(AnalogButton button);
         void updateAnalogState();
+        void scaleVector(float &x, float &y, float magnitudeMin, float magnitudeMax, float scaleMin, float scaleMax);
         uint16_t getAverage();
         void updateButtonRange(AnalogButton &button);
         void processDigitalButton(AnalogButton &button);
