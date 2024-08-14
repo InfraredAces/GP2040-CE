@@ -707,7 +707,15 @@ void ConfigUtils::initUnsetPropertiesWithDefaults(Config& config)
     INIT_UNSET_PROPERTY(config.addonOptions.drv8833RumbleOptions, dutyMax, DRV8833_RUMBLE_DUTY_MAX);
 
     // addonOptions.analogButtonOption
-    INIT_UNSET_PROPERTY(config.addonOptions.analogButtonOptions, enabled, ANALOG_BUTTON_ENABLED);
+    INIT_UNSET_PROPERTY(config.addonOptions.analogButtonOptions, enabled, !!ANALOG_BUTTON_ENABLED);
+    INIT_UNSET_PROPERTY(config.addonOptions.analogButtonOptions, totalTravel, ANALOG_BUTTON_TOTAL_TRAVEL);
+    INIT_UNSET_PROPERTY(config.addonOptions.analogButtonOptions, poleSensorOrientation, ANALOG_BUTTON_POLE_SENSOR_ORIENTATION);
+    // INIT_UNSET_PROPERTY(config.addonOptions.analogButtonOptions, , );
+    // INIT_UNSET_PROPERTY(config.addonOptions.analogButtonOptions, , );
+    // INIT_UNSET_PROPERTY(config.addonOptions.analogButtonOptions, , );
+    // INIT_UNSET_PROPERTY(config.addonOptions.analogButtonOptions, , );
+    // INIT_UNSET_PROPERTY(config.addonOptions.analogButtonOptions, , );
+    // INIT_UNSET_PROPERTY(config.addonOptions.analogButtonOptions, , );
     
     // addonOptions.rotaryOptions
     INIT_UNSET_PROPERTY(config.addonOptions.rotaryOptions, enabled, !!ROTARY_ENCODER_ENABLED);

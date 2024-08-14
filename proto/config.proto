@@ -750,9 +750,29 @@ message DRV8833RumbleOptions
 		optional float dutyMax = 7;
 }
 
+message ActuationOptions
+{
+    optional AnalogTriggerType triggerMode = 1;
+    optional int32 actuationPoint = 2;
+    optional int32 pressThreshold = 3;
+    optional int32 releaseThreshold = 4;
+}
+
+message AnalogButtonPerButton
+{
+    optional int32 pin = 1
+    optional GpioAction gpioAction = 2;
+    optional int32 enabledPerKeySettings = 3;
+    optional ActuationOptions actuationOptions = 4;
+}
+
 message AnalogButtonOptions
 {
     optional bool enabled = 1;
+    optional int32 totalTravel = 2;
+    optional int32 poleSensorOrientation = 3;
+    optional ActuationOptions actuationOptions = 4;
+    repeated AnalogButtonPerButton analogButtons = 5 [(nanopb).max_count = 4];
 }
 
 message AddonOptions

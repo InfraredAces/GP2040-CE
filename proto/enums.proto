@@ -412,7 +412,7 @@ enum RotaryEncoderPinMode
     ENCODER_MODE_DPAD_Y = 8;
 };
 
-enum AnalogTriggerMode
+enum AnalogTriggerType
 {
     option (nanopb_enumopt).long_names = false;
 

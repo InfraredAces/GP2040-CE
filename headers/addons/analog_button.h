@@ -18,9 +18,9 @@
 #define ANALOG_BUTTON_TOTAL_TRAVEL 400
 #endif
 
-#ifndef ANALOG_BUTTON_ACTUATION_POINT
-// uint16 measured in 0.1mm increments 
-#define ANALOG_BUTTON_ACTUATION_POINT 150
+#ifndef ANALOG_BUTTON_POLE_SENSOR_ORIENTATION
+// -1 or 1, Orientation of magnet and sensor relative to one another, Flip if unexpected behavior occurs
+#define ANALOG_BUTTON_POLE_SENSOR_ORIENTATION 1
 #endif
 
 #ifndef ANALOG_BUTTON_TRIGGER_MODE
@@ -32,48 +32,47 @@
 #define CONTINUOUS_RAPID_THRESHOLD 0
 #endif
 
+#ifndef ANALOG_BUTTON_ACTUATION_POINT
+// uint16 measured in 0.1mm increments 
+#define ANALOG_BUTTON_ACTUATION_POINT 150
+#endif
+
 #ifndef ANALOG_BUTTON_PRESS_THRESHOLD
 /// uint16 measured in 0.1mm increments, Downward distance required when ready to actuate switch
 #define ANALOG_BUTTON_PRESS_THRESHOLD 20
 #endif
-
 
 #ifndef ANALOG_BUTTON_RELEASE_THRESHOLD
 /// uint16 measured in 0.1mm increments, Upward distance required while pressed to deactivate switch
 #define ANALOG_BUTTON_RELEASE_THRESHOLD 20
 #endif
 
-#ifndef ANALOG_BUTTON_POLE_SENSOR_ORIENTATION
-// -1 or 1, Orientation of magnet and sensor relative to one another, Flip if unexpected behavior occurs
-#define ANALOG_BUTTON_POLE_SENSOR_ORIENTATION 1
-#endif
-
 #ifndef ANALOG_BUTTON_ENFORCE_CIRCULARITY
-#define ANALOG_BUTTON_ENFORCE_CIRCULARITY 0
+#define ANALOG_BUTTON_ENFORCE_CIRCULARITY 1
 #endif
 
 #ifndef ANALOG_BUTTON_00_PIN
-#define ANALOG_BUTTON_00_PIN 26
+#define ANALOG_BUTTON_00_PIN 27
 #endif
 
 #ifndef ANALOG_BUTTON_00_ACTION
-#define ANALOG_BUTTON_00_ACTION GpioAction::ANALOG_LS_DIRECTION_LEFT
+#define ANALOG_BUTTON_00_ACTION GpioAction::ANALOG_LS_DIRECTION_DOWN
 #endif
 
 #ifndef ANALOG_BUTTON_01_PIN
-#define ANALOG_BUTTON_01_PIN 27
+#define ANALOG_BUTTON_01_PIN 28
 #endif
 
 #ifndef ANALOG_BUTTON_01_ACTION
-#define ANALOG_BUTTON_01_ACTION GpioAction::ANALOG_LS_DIRECTION_DOWN
+#define ANALOG_BUTTON_01_ACTION GpioAction::ANALOG_LS_DIRECTION_RIGHT
 #endif
 
 #ifndef ANALOG_BUTTON_02_PIN
-#define ANALOG_BUTTON_02_PIN 28
+#define ANALOG_BUTTON_02_PIN 26
 #endif
 
 #ifndef ANALOG_BUTTON_02_ACTION
-#define ANALOG_BUTTON_02_ACTION GpioAction::ANALOG_LS_DIRECTION_RIGHT
+#define ANALOG_BUTTON_02_ACTION GpioAction::ANALOG_LS_DIRECTION_LEFT
 #endif
 
 #ifndef ANALOG_BUTTON_03_PIN
@@ -106,8 +105,8 @@ struct AnalogButton {
     GpioMappingInfo gpioMappingInfo;
     uint16_t rawValue = 0;
     uint16_t smaValue = 0;
-    uint16_t restPosition = 0;
-    uint16_t downPosition = (1 << ANALOG_RESOLUTION) - 1;
+    uint16_t restPosition = (1 << ANALOG_RESOLUTION) - 1;
+    uint16_t downPosition = 0;
     uint16_t distance = 0;
     uint16_t localMax = ANALOG_BUTTON_TOTAL_TRAVEL;
     bool calibrated = false;

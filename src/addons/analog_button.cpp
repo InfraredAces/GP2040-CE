@@ -10,7 +10,7 @@
 #include "analog_button.h"
 
 #define ADC_PIN_OFFSET 26
-#define NUM_ADC_PINS 4
+#define NUM_ADC_PINS 1
 
 bool AnalogButtonAddon::available() {
     return Storage::getInstance().getAddonOptions().analogButtonOptions.enabled;
@@ -20,6 +20,7 @@ void AnalogButtonAddon::setup() {
 
     for (size_t i = 0; i < NUM_ADC_PINS; i++)
     {
+        analogButtons[i].index = i;
         analogButtons[i].pin = buttonPins[i];
         analogButtons[i].gpioMappingInfo.action = buttonActions[i];
         printf("Pin: %2u ", analogButtons[i].pin);
@@ -40,20 +41,19 @@ void AnalogButtonAddon::process() {
     Gamepad *gamepad = Storage::getInstance().GetGamepad();
     gamepad->hasAnalogTriggers = true;
 
-    for (size_t i = 0; i < NUM_ADC_PINS; i++)
-    {
+    for (size_t i = 0; i < NUM_ADC_PINS; i++) {
         if (isValidPin(analogButtons[i].pin))
         {
+            printf("%2u ", analogButtons[i].pin); 
+
             readButton(analogButtons[i]);
             if (analogButtons[i].calibrated){
                 if(find(analogActions.begin(), analogActions.end(), analogButtons[i].gpioMappingInfo.action) != analogActions.end()) {
                     queueAnalogChange(analogButtons[i]);
                 } else {
                  processDigitalButton(analogButtons[i]);
-            }
-
-            }
-            
+                }
+            }   
         }
     }
 
@@ -129,11 +129,11 @@ void AnalogButtonAddon::readButton(AnalogButton &button) {
         return;
     }
 
-    button.distance = constrain(map(button.smaValue, button.downPosition, button.restPosition, 0, ANALOG_BUTTON_TOTAL_TRAVEL), 0, ANALOG_BUTTON_TOTAL_TRAVEL);
+    button.distance = constrain(map(button.smaValue, button.restPosition, button.downPosition, 0, ANALOG_BUTTON_TOTAL_TRAVEL), 0, ANALOG_BUTTON_TOTAL_TRAVEL);
 
-    // printf("%1.2fmm ", (float)button.distance / 100.0);
+    printf("%1.2fmm ", (float)button.distance / 100.0);
 }
-
+// 
 void AnalogButtonAddon::queueAnalogChange(AnalogButton button) {
     AnalogChange analogChange = {
         button.gpioMappingInfo.action,
@@ -239,7 +239,15 @@ void AnalogButtonAddon::updateAnalogState() {
     deltaLY = (int16_t)(deltaPercentLY * joystickMid);
     deltaLX = (int16_t)(deltaPercentLX * joystickMid);
     deltaRY = (int16_t)(deltaPercentRY * joystickMid);
-    deltaRX = (int16_t)(deltaPercentRX * joystickMid);        
+    deltaRX = (int16_t)(deltaPercentRX * joystickMid);
+
+    
+    printf("%5u ", deltaLY);
+    printf("%5u ", deltaLX);
+    printf("%5u ", deltaRY);
+    printf("%5u ", deltaRX);
+    printf("%5u ", deltaLT);
+    printf("%5u ", deltaRT);
 
     gamepad->state.ly = constrain((int16_t)GAMEPAD_JOYSTICK_MID + deltaLY, GAMEPAD_JOYSTICK_MIN, GAMEPAD_JOYSTICK_MAX);
     gamepad->state.lx = constrain((int16_t)GAMEPAD_JOYSTICK_MID + deltaLX, GAMEPAD_JOYSTICK_MIN, GAMEPAD_JOYSTICK_MAX);
@@ -266,18 +274,25 @@ void AnalogButtonAddon::updateButtonRange(AnalogButton &button) {
     uint16_t upperValue = button.smaValue - ANALOG_BUTTON_DEADZONE;
     uint16_t lowerValue = button.smaValue + ANALOG_BUTTON_DEADZONE;
 
-    // If the read value with deadzone applied is bigger than the current rest position, update it.
-    if (button.restPosition < upperValue) {
-        button.restPosition = upperValue;
+    // If the read value with deadzone applied is bigger than the current down position, update it.
+    if (button.downPosition < upperValue) {
+        button.downPosition = upperValue;
 
-    // If the read value with deadzone applied is lower than the current down position, update it. Make sure that the distance to the rest position
-    // is at least SENSOR_BOUNDARY_MIN_DISTANCE (scaled with travel distance @ 4.00mm) to prevent poor calibration/analog range resulting in "crazy behaviour".
-    } else if (button.downPosition > lowerValue && button.restPosition - lowerValue >= (ANALOG_BUTTON_TOTAL_TRAVEL / 2) * ANALOG_BUTTON_TOTAL_TRAVEL / ANALOG_BUTTON_TOTAL_TRAVEL) {
+    // If the read value with deadzone applied is lower than the current down position, update it. 
+    // Make sure that the distance to the rest position is at least SENSOR_BOUNDARY_MIN_DISTANCE (scaled with travel distance @ 4.00mm) to prevent poor calibration/analog range resulting in "crazy behaviour".
+    } else if (button.restPosition > lowerValue && button.downPosition - upperValue >= (ANALOG_BUTTON_TOTAL_TRAVEL / 2) * ANALOG_BUTTON_TOTAL_TRAVEL / ANALOG_BUTTON_TOTAL_TRAVEL) {
     // From here on, the down position has been set < rest position, therefore the key can be considered calibrated, allowing distance calculation.
         button.calibrated = true;
 
-        button.downPosition = lowerValue;
+        button.restPosition = lowerValue;
     }
+
+    // printf("%4u ", upperValue);  
+    // printf("%4u ", lowerValue);  
+    printf("%4u ", button.smaValue);  
+    // printf("%4u ", button.restPosition);
+    // printf("%4u ", button.downPosition);
+
 }
 
 void AnalogButtonAddon::processDigitalButton(AnalogButton &button) {
@@ -333,12 +348,9 @@ void AnalogButtonAddon::rapidTrigger(AnalogButton &button) {
         button.localMax = button.distance;
     }
 
-    // if(button.pressed) {
-    //     printf("pressed ");
-    //     triggerButtonPress(button);
-    // } else {
-    //     printf("ready   ");
-    // }
+    if(button.pressed) {
+        triggerButtonPress(button);
+    }
 }
 
 void AnalogButtonAddon::triggerButtonPress(AnalogButton button) {
