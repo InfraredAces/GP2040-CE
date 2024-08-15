@@ -711,11 +711,36 @@ void ConfigUtils::initUnsetPropertiesWithDefaults(Config& config)
     INIT_UNSET_PROPERTY(config.addonOptions.analogButtonOptions, enabled, !!ANALOG_BUTTON_ENABLED);
     INIT_UNSET_PROPERTY(config.addonOptions.analogButtonOptions, totalTravel, ANALOG_BUTTON_TOTAL_TRAVEL);
     INIT_UNSET_PROPERTY(config.addonOptions.analogButtonOptions, poleSensorOrientation, ANALOG_BUTTON_POLE_SENSOR_ORIENTATION);
-    // INIT_UNSET_PROPERTY(config.addonOptions.analogButtonOptions, , );
-    // INIT_UNSET_PROPERTY(config.addonOptions.analogButtonOptions, , );
-    // INIT_UNSET_PROPERTY(config.addonOptions.analogButtonOptions, , );
-    // INIT_UNSET_PROPERTY(config.addonOptions.analogButtonOptions, , );
-    // INIT_UNSET_PROPERTY(config.addonOptions.analogButtonOptions, , );
+    INIT_UNSET_PROPERTY(config.addonOptions.analogButtonOptions, enforceCircularity, ANALOG_BUTTON_ENFORCE_CIRCULARITY);
+    INIT_UNSET_PROPERTY(config.addonOptions.analogButtonOptions, analogDeadzone, ANALOG_BUTTON_DEADZONE);
+    INIT_UNSET_PROPERTY(config.addonOptions.analogButtonOptions.actuationOptions, triggerMode, ANALOG_BUTTON_TRIGGER_MODE);
+    INIT_UNSET_PROPERTY(config.addonOptions.analogButtonOptions.actuationOptions, actuationPoint, ANALOG_BUTTON_ACTUATION_POINT);
+    INIT_UNSET_PROPERTY(config.addonOptions.analogButtonOptions.actuationOptions, pressThreshold, ANALOG_BUTTON_PRESS_THRESHOLD);
+    INIT_UNSET_PROPERTY(config.addonOptions.analogButtonOptions.actuationOptions, releaseThreshold, ANALOG_BUTTON_RELEASE_THRESHOLD);
+
+    int buttonPins[NUM_ANALOG_BUTTONS] = {
+            ANALOG_BUTTON_00_PIN, ANALOG_BUTTON_01_PIN, ANALOG_BUTTON_02_PIN, ANALOG_BUTTON_03_PIN, 
+            // ANALOG_BUTTON_04_PIN, ANALOG_BUTTON_05_PIN, ANALOG_BUTTON_06_PIN, ANALOG_BUTTON_07_PIN, 
+            // ANALOG_BUTTON_08_PIN, ANALOG_BUTTON_09_PIN, ANALOG_BUTTON_10_PIN, ANALOG_BUTTON_11_PIN, 
+            // ANALOG_BUTTON_12_PIN, ANALOG_BUTTON_13_PIN, ANALOG_BUTTON_14_PIN, ANALOG_BUTTON_15_PIN, 
+            // ANALOG_BUTTON_16_PIN, ANALOG_BUTTON_17_PIN, ANALOG_BUTTON_18_PIN, ANALOG_BUTTON_19_PIN
+    };
+    GpioAction buttonActions[NUM_ANALOG_BUTTONS] = {
+            ANALOG_BUTTON_00_ACTION, ANALOG_BUTTON_01_ACTION, ANALOG_BUTTON_02_ACTION, ANALOG_BUTTON_03_ACTION, 
+            // ANALOG_BUTTON_04_ACTION, ANALOG_BUTTON_05_ACTION, ANALOG_BUTTON_06_ACTION, ANALOG_BUTTON_07_ACTION, 
+            // ANALOG_BUTTON_08_ACTION, ANALOG_BUTTON_09_ACTION, ANALOG_BUTTON_10_ACTION, ANALOG_BUTTON_11_ACTION, 
+            // ANALOG_BUTTON_12_ACTION, ANALOG_BUTTON_13_ACTION, ANALOG_BUTTON_14_ACTION, ANALOG_BUTTON_15_ACTION, 
+            // ANALOG_BUTTON_16_ACTION, ANALOG_BUTTON_17_ACTION, ANALOG_BUTTON_18_ACTION, ANALOG_BUTTON_19_ACTION
+    };
+        for(size_t i = 0; i < NUM_ANALOG_BUTTONS; i++) {
+            INIT_UNSET_PROPERTY(config.addonOptions.analogButtonOptions.analogButtons[i], pin, buttonPins[i]);
+            INIT_UNSET_PROPERTY(config.addonOptions.analogButtonOptions.analogButtons[i], gpioAction, buttonActions[i]);
+            INIT_UNSET_PROPERTY(config.addonOptions.analogButtonOptions.analogButtons[i], enabledPerButtonSettings, 0);
+            INIT_UNSET_PROPERTY(config.addonOptions.analogButtonOptions.analogButtons[i].actuationOptions, triggerMode, ANALOG_BUTTON_TRIGGER_MODE);
+            INIT_UNSET_PROPERTY(config.addonOptions.analogButtonOptions.analogButtons[i].actuationOptions, actuationPoint, ANALOG_BUTTON_ACTUATION_POINT);
+            INIT_UNSET_PROPERTY(config.addonOptions.analogButtonOptions.analogButtons[i].actuationOptions, pressThreshold, ANALOG_BUTTON_PRESS_THRESHOLD);
+            INIT_UNSET_PROPERTY(config.addonOptions.analogButtonOptions.analogButtons[i].actuationOptions, releaseThreshold, ANALOG_BUTTON_RELEASE_THRESHOLD);
+        }
     // INIT_UNSET_PROPERTY(config.addonOptions.analogButtonOptions, , );
     
     // addonOptions.rotaryOptions

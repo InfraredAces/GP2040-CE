@@ -776,7 +776,7 @@ message AnalogButtonPerButton
 {
     optional int32 pin = 1;
     optional GpioAction gpioAction = 2;
-    optional int32 enabledPerKeySettings = 3;
+    optional bool enabledPerButtonSettings = 3;
     optional ActuationOptions actuationOptions = 4;
 }
 
@@ -785,8 +785,10 @@ message AnalogButtonOptions
     optional bool enabled = 1;
     optional int32 totalTravel = 2;
     optional int32 poleSensorOrientation = 3;
-    optional ActuationOptions actuationOptions = 4;
-    repeated AnalogButtonPerButton analogButtons = 5 [(nanopb).max_count = 4];
+    optional bool enforceCircularity = 4;
+    optional int32 analogDeadzone = 5;
+    optional ActuationOptions actuationOptions = 6;
+    repeated AnalogButtonPerButton analogButtons = 7 [(nanopb).max_count = 4];
 }
 
 message AddonOptions

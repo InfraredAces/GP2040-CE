@@ -20,16 +20,16 @@
 
 #ifndef ANALOG_BUTTON_POLE_SENSOR_ORIENTATION
 // -1 or 1, Orientation of magnet and sensor relative to one another, Flip if unexpected behavior occurs
-#define ANALOG_BUTTON_POLE_SENSOR_ORIENTATION 1
+#define ANALOG_BUTTON_POLE_SENSOR_ORIENTATION -1
 #endif
 
 #ifndef ANALOG_BUTTON_TRIGGER_MODE
 #define ANALOG_BUTTON_TRIGGER_MODE AnalogTriggerType::RAPID_TRIGGER
 #endif
 
-#ifndef CONTINUOUS_RAPID_THRESHOLD
+#ifndef CONTINUOUS_RAPID_TRIGGER_THRESHOLD
 /// uint16 measured in 0.1mm increments, Distance from rest position for disabling rapid trigger state
-#define CONTINUOUS_RAPID_THRESHOLD 0
+#define CONTINUOUS_RAPID_TRIGGER_THRESHOLD 10
 #endif
 
 #ifndef ANALOG_BUTTON_ACTUATION_POINT
@@ -51,12 +51,18 @@
 #define ANALOG_BUTTON_ENFORCE_CIRCULARITY 1
 #endif
 
+
+#ifndef ANALOG_BUTTON_DEADZONE
+/// uint16 measured in 1% increments, Distance the switch needs to move before being recognized as moving
+#define ANALOG_BUTTON_DEADZONE 20
+#endif
+
 #ifndef ANALOG_BUTTON_00_PIN
 #define ANALOG_BUTTON_00_PIN 27
 #endif
 
 #ifndef ANALOG_BUTTON_00_ACTION
-#define ANALOG_BUTTON_00_ACTION GpioAction::ANALOG_LS_DIRECTION_DOWN
+#define ANALOG_BUTTON_00_ACTION GpioAction::BUTTON_PRESS_B1
 #endif
 
 #ifndef ANALOG_BUTTON_01_PIN
@@ -64,7 +70,7 @@
 #endif
 
 #ifndef ANALOG_BUTTON_01_ACTION
-#define ANALOG_BUTTON_01_ACTION GpioAction::ANALOG_LS_DIRECTION_RIGHT
+#define ANALOG_BUTTON_01_ACTION GpioAction::BUTTON_PRESS_B2
 #endif
 
 #ifndef ANALOG_BUTTON_02_PIN
@@ -72,7 +78,7 @@
 #endif
 
 #ifndef ANALOG_BUTTON_02_ACTION
-#define ANALOG_BUTTON_02_ACTION GpioAction::ANALOG_LS_DIRECTION_LEFT
+#define ANALOG_BUTTON_02_ACTION GpioAction::BUTTON_PRESS_B3
 #endif
 
 #ifndef ANALOG_BUTTON_03_PIN
@@ -83,12 +89,132 @@
 #define ANALOG_BUTTON_03_ACTION GpioAction::ANALOG_LS_DIRECTION_UP
 #endif
 
-#ifndef ANALOG_BUTTON_0_PIN
-#define ANALOG_BUTTON_0_PIN -1
+#ifndef ANALOG_BUTTON_04_PIN
+#define ANALOG_BUTTON_04_PIN -1
 #endif
 
-#ifndef ANALOG_BUTTON_0_ACTION
-#define ANALOG_BUTTON_0_ACTION GpioAction::NONE
+#ifndef ANALOG_BUTTON_04_ACTION
+#define ANALOG_BUTTON_04_ACTION GpioAction::NONE
+#endif
+
+#ifndef ANALOG_BUTTON_05_PIN
+#define ANALOG_BUTTON_05_PIN -1
+#endif
+
+#ifndef ANALOG_BUTTON_05_ACTION
+#define ANALOG_BUTTON_05_ACTION GpioAction::NONE
+#endif
+
+#ifndef ANALOG_BUTTON_06_PIN
+#define ANALOG_BUTTON_06_PIN -1
+#endif
+
+#ifndef ANALOG_BUTTON_06_ACTION
+#define ANALOG_BUTTON_06_ACTION GpioAction::NONE
+#endif
+
+#ifndef ANALOG_BUTTON_07_PIN
+#define ANALOG_BUTTON_07_PIN -1
+#endif
+
+#ifndef ANALOG_BUTTON_07_ACTION
+#define ANALOG_BUTTON_07_ACTION GpioAction::NONE
+#endif
+
+#ifndef ANALOG_BUTTON_08_PIN
+#define ANALOG_BUTTON_08_PIN -1
+#endif
+
+#ifndef ANALOG_BUTTON_08_ACTION
+#define ANALOG_BUTTON_08_ACTION GpioAction::NONE
+#endif
+
+#ifndef ANALOG_BUTTON_09_PIN
+#define ANALOG_BUTTON_09_PIN -1
+#endif
+
+#ifndef ANALOG_BUTTON_09_ACTION
+#define ANALOG_BUTTON_09_ACTION GpioAction::NONE
+#endif
+
+#ifndef ANALOG_BUTTON_10_PIN
+#define ANALOG_BUTTON_10_PIN -1
+#endif
+
+#ifndef ANALOG_BUTTON_10_ACTION
+#define ANALOG_BUTTON_10_ACTION GpioAction::NONE
+#endif
+
+#ifndef ANALOG_BUTTON_11_PIN
+#define ANALOG_BUTTON_11_PIN -1
+#endif
+
+#ifndef ANALOG_BUTTON_11_ACTION
+#define ANALOG_BUTTON_11_ACTION GpioAction::NONE
+#endif
+
+#ifndef ANALOG_BUTTON_12_PIN
+#define ANALOG_BUTTON_12_PIN -1
+#endif
+
+#ifndef ANALOG_BUTTON_12_ACTION
+#define ANALOG_BUTTON_12_ACTION GpioAction::NONE
+#endif
+
+#ifndef ANALOG_BUTTON_13_PIN
+#define ANALOG_BUTTON_13_PIN -1
+#endif
+
+#ifndef ANALOG_BUTTON_13_ACTION
+#define ANALOG_BUTTON_13_ACTION GpioAction::NONE
+#endif
+
+#ifndef ANALOG_BUTTON_14_PIN
+#define ANALOG_BUTTON_14_PIN -1
+#endif
+
+#ifndef ANALOG_BUTTON_14_ACTION
+#define ANALOG_BUTTON_14_ACTION GpioAction::NONE
+#endif
+
+#ifndef ANALOG_BUTTON_15_PIN
+#define ANALOG_BUTTON_15_PIN -1
+#endif
+
+#ifndef ANALOG_BUTTON_15_ACTION
+#define ANALOG_BUTTON_15_ACTION GpioAction::NONE
+#endif
+
+#ifndef ANALOG_BUTTON_16_PIN
+#define ANALOG_BUTTON_16_PIN -1
+#endif
+
+#ifndef ANALOG_BUTTON_16_ACTION
+#define ANALOG_BUTTON_16_ACTION GpioAction::NONE
+#endif
+
+#ifndef ANALOG_BUTTON_17_PIN
+#define ANALOG_BUTTON_17_PIN -1
+#endif
+
+#ifndef ANALOG_BUTTON_17_ACTION
+#define ANALOG_BUTTON_17_ACTION GpioAction::NONE
+#endif
+
+#ifndef ANALOG_BUTTON_18_PIN
+#define ANALOG_BUTTON_18_PIN -1
+#endif
+
+#ifndef ANALOG_BUTTON_18_ACTION
+#define ANALOG_BUTTON_18_ACTION GpioAction::NONE
+#endif
+
+#ifndef ANALOG_BUTTON_19_PIN
+#define ANALOG_BUTTON_19_PIN -1
+#endif
+
+#ifndef ANALOG_BUTTON_19_ACTION
+#define ANALOG_BUTTON_19_ACTION GpioAction::NONE
 #endif
 
 /*
@@ -100,7 +226,7 @@
 #define ANALOG_RESOLUTION 12
 
 struct AnalogButton {
-    uint16_t index;
+    uint16_t index = 0;
     int pin = -1;
     GpioMappingInfo gpioMappingInfo;
     uint16_t rawValue = 0;
@@ -129,7 +255,7 @@ struct AnalogChange {
 */
 
 #define NUM_ANALOG_BUTTONS 4
-#define ANALOG_BUTTON_DEADZONE 20
+
 #define constrain(amt, low, high) ((amt) < (low) ? (low) : ((amt) > (high) ? (high) : (amt)))
 
 #define AnalogButtonName "AnalogButton"
@@ -156,18 +282,6 @@ class AnalogButtonAddon : public GPAddon {
         void SOCDClean(SOCDMode socdMode);
         const SOCDMode getSOCDMode(const GamepadOptions &options);
         AnalogButton analogButtons[NUM_ANALOG_BUTTONS];
-        int buttonPins[NUM_ANALOG_BUTTONS] = {
-            ANALOG_BUTTON_00_PIN, 
-            ANALOG_BUTTON_01_PIN, 
-            ANALOG_BUTTON_02_PIN, 
-            ANALOG_BUTTON_03_PIN
-        };
-        GpioAction buttonActions[NUM_ANALOG_BUTTONS] = {
-            ANALOG_BUTTON_00_ACTION,
-            ANALOG_BUTTON_01_ACTION,
-            ANALOG_BUTTON_02_ACTION,
-            ANALOG_BUTTON_03_ACTION
-        };
         vector<int> analogActions {
             GpioAction::ANALOG_LS_DIRECTION_UP,
             GpioAction::ANALOG_LS_DIRECTION_DOWN,

@@ -16,24 +16,26 @@ bool AnalogButtonAddon::available() {
     return Storage::getInstance().getAddonOptions().analogButtonOptions.enabled;
 }
 void AnalogButtonAddon::setup() {
+    const AnalogButtonOptions &analogButtonOptions = Storage::getInstance().getAddonOptions().analogButtonOptions;
     stdio_init_all();
 
-    for (size_t i = 0; i < NUM_ADC_PINS; i++)
-    {
+    for (size_t i = 0; i < NUM_ANALOG_BUTTONS; i++) {
         analogButtons[i].index = i;
-        analogButtons[i].pin = buttonPins[i];
-        analogButtons[i].gpioMappingInfo.action = buttonActions[i];
-        printf("Pin: %2u ", analogButtons[i].pin);
-        printGpioAction(analogButtons[i].gpioMappingInfo.action);
+        analogButtons[i].pin = analogButtonOptions.analogButtons[i].pin;
+        analogButtons[i].gpioMappingInfo.action = analogButtonOptions.analogButtons[i].gpioAction;
+
+        // printf("Pin: %2u ", analogButtons[i].pin);
+        // printGpioAction(analogButtons[i].gpioMappingInfo.action);
     }
 
-    for (size_t i = 0; i < NUM_ADC_PINS; i++)
-    {
+    for (size_t i = 0; i < NUM_ANALOG_BUTTONS; i++) {
         if (isValidPin(analogButtons[i].pin))
         {
             adc_gpio_init(analogButtons[i].pin);
         }
     }
+
+    printf("\n");
 }
 
 void AnalogButtonAddon::process() {
@@ -41,13 +43,12 @@ void AnalogButtonAddon::process() {
     Gamepad *gamepad = Storage::getInstance().GetGamepad();
     gamepad->hasAnalogTriggers = true;
 
-    for (size_t i = 0; i < NUM_ADC_PINS; i++) {
-        if (isValidPin(analogButtons[i].pin))
-        {
-            printf("%2u ", analogButtons[i].pin); 
+    for (size_t i = 0; i < NUM_ANALOG_BUTTONS; i++) {
+        if (isValidPin(analogButtons[i].pin)) {
+            // printf("%2u ", analogButtons[i].pin); 
 
             readButton(analogButtons[i]);
-            if (analogButtons[i].calibrated){
+            if (analogButtons[i].calibrated) {
                 if(find(analogActions.begin(), analogActions.end(), analogButtons[i].gpioMappingInfo.action) != analogActions.end()) {
                     queueAnalogChange(analogButtons[i]);
                 } else {
@@ -61,7 +62,7 @@ void AnalogButtonAddon::process() {
 
     // printf("%5u %5u %5u %5u %3u %3u", gamepad->state.lx, gamepad->state.ly, gamepad->state.rx, gamepad->state.ry, gamepad->state.lt, gamepad->state.rt);
 
-    printf("\n");
+    // printf("\n");
 }
 
 void AnalogButtonAddon::printGpioAction(GpioAction gpioAction) {
@@ -112,11 +113,13 @@ long AnalogButtonAddon::map(long x, long in_min, long in_max, long out_min, long
 }
 
 void AnalogButtonAddon::readButton(AnalogButton &button) {
+    const AnalogButtonOptions &analogButtonOptions = Storage::getInstance().getAddonOptions().analogButtonOptions;
+
     adc_select_input(button.pin - ADC_PIN_OFFSET);
     button.rawValue = adc_read();
     button.smaValue = button.filter(button.rawValue);
 
-    if (ANALOG_BUTTON_POLE_SENSOR_ORIENTATION == -1) {
+    if (analogButtonOptions.poleSensorOrientation == -1) {
         button.smaValue = (1 << ANALOG_RESOLUTION) - 1 - button.smaValue;
     }
 
@@ -125,11 +128,11 @@ void AnalogButtonAddon::readButton(AnalogButton &button) {
     }
 
     if (!button.calibrated) {
-        button.distance = ANALOG_BUTTON_TOTAL_TRAVEL;
+        button.distance = analogButtonOptions.totalTravel;
         return;
     }
 
-    button.distance = constrain(map(button.smaValue, button.restPosition, button.downPosition, 0, ANALOG_BUTTON_TOTAL_TRAVEL), 0, ANALOG_BUTTON_TOTAL_TRAVEL);
+    button.distance = constrain(map(button.smaValue, button.restPosition, button.downPosition, 0, analogButtonOptions.totalTravel), 0, analogButtonOptions.totalTravel);
 
     // printGpioAction(button.gpioMappingInfo.action);
     // printf("%4u ", button.smaValue);
@@ -154,6 +157,7 @@ void AnalogButtonAddon::queueAnalogChange(AnalogButton button) {
 }
 
 void AnalogButtonAddon::updateAnalogState() {
+    const AnalogButtonOptions &analogButtonOptions = Storage::getInstance().getAddonOptions().analogButtonOptions;
     Gamepad *gamepad = Storage::getInstance().GetGamepad();
     gamepad->hasAnalogTriggers = true;
 
@@ -189,8 +193,10 @@ void AnalogButtonAddon::updateAnalogState() {
 
         float deltaPercent = 0.0;
 
+        int16_t deadzoneValue = (int16_t)((float)analogButtonOptions.analogDeadzone / 100.0 * (float)(downPosition - restPosition));
+
         //TODO: Update logic to handle multiple buttons assigned to analog directions
-        if ((newValue - restPosition) > ANALOG_BUTTON_DEADZONE) {
+        if ((newValue - restPosition) > deadzoneValue) {
             deltaPercent = constrain((float)(newValue - restPosition) / (float)(downPosition - restPosition), 0.0, 1.0);
             switch(gpioAction) {
                 case GpioAction::ANALOG_LS_DIRECTION_UP:
@@ -242,7 +248,7 @@ void AnalogButtonAddon::updateAnalogState() {
     float magnitudeLXY = sqrt((deltaPercentLX * deltaPercentLX) + (deltaPercentLY * deltaPercentLY));
     float magnitudeRXY = sqrt((deltaPercentRX * deltaPercentRX) + (deltaPercentRY * deltaPercentRY));
 
-    if (ANALOG_BUTTON_ENFORCE_CIRCULARITY == 1) {
+    if (analogButtonOptions.enforceCircularity) {
         if (magnitudeLXY > 1.0) {
             scaleVector(deltaPercentLX, deltaPercentLY, 0.0, sqrt(2.0), 0.0, 1.0);
         } else if (magnitudeRXY > 1.0) {
@@ -284,9 +290,12 @@ void AnalogButtonAddon::scaleVector(float &x, float &y, float magnitudeMin, floa
 }
 
 void AnalogButtonAddon::updateButtonRange(AnalogButton &button) {
+    const AnalogButtonOptions &analogButtonOptions = Storage::getInstance().getAddonOptions().analogButtonOptions;
+
     // Calculate the value with the deadzone in the positive and negative direction applied.
-    uint16_t upperValue = button.smaValue - ANALOG_BUTTON_DEADZONE;
-    uint16_t lowerValue = button.smaValue + ANALOG_BUTTON_DEADZONE;
+    int16_t deadzoneValue = (int16_t)((float)analogButtonOptions.analogDeadzone / 100.0 * (float)(button.downPosition - button.restPosition));
+    uint16_t upperValue = button.smaValue - deadzoneValue;
+    uint16_t lowerValue = button.smaValue + deadzoneValue;
 
     // If the read value with deadzone applied is bigger than the current down position, update it.
     if (button.downPosition < upperValue) {
@@ -294,7 +303,7 @@ void AnalogButtonAddon::updateButtonRange(AnalogButton &button) {
 
     // If the read value with deadzone applied is lower than the current down position, update it. 
     // Make sure that the distance to the rest position is at least SENSOR_BOUNDARY_MIN_DISTANCE (scaled with travel distance @ 4.00mm) to prevent poor calibration/analog range resulting in "crazy behaviour".
-    } else if (button.restPosition > lowerValue && button.downPosition - upperValue >= (ANALOG_BUTTON_TOTAL_TRAVEL / 2) * ANALOG_BUTTON_TOTAL_TRAVEL / ANALOG_BUTTON_TOTAL_TRAVEL) {
+    } else if (button.restPosition > lowerValue && button.downPosition - upperValue >= (analogButtonOptions.totalTravel / 2) * analogButtonOptions.totalTravel / analogButtonOptions.totalTravel) {
     // From here on, the down position has been set < rest position, therefore the key can be considered calibrated, allowing distance calculation.
         button.calibrated = true;
 
@@ -314,9 +323,9 @@ void AnalogButtonAddon::processDigitalButton(AnalogButton &button) {
     const AnalogButtonOptions &analogButtonOptions = Storage::getInstance().getAddonOptions().analogButtonOptions;
     Gamepad *gamepad = Storage::getInstance().GetGamepad();
 
-    switch (ANALOG_BUTTON_TRIGGER_MODE) {
+    switch (analogButtonOptions.analogButtons[button.index].actuationOptions.triggerMode) {
         case AnalogTriggerType::STATIC_TRIGGER:
-            if(button.distance > ANALOG_BUTTON_ACTUATION_POINT) {
+            if(button.distance > analogButtonOptions.analogButtons[button.index].actuationOptions.actuationPoint) {
                 triggerButtonPress(button);
             }
             break;
@@ -327,34 +336,36 @@ void AnalogButtonAddon::processDigitalButton(AnalogButton &button) {
 }
 
 void AnalogButtonAddon::rapidTrigger(AnalogButton &button) {
+    const AnalogButtonOptions &analogButtonOptions = Storage::getInstance().getAddonOptions().analogButtonOptions;
+
 
     // Reset RapidTrigger state if button leaves the rapid trigger zone
-    switch(ANALOG_BUTTON_TRIGGER_MODE) {
+    switch(analogButtonOptions.analogButtons[button.index].actuationOptions.triggerMode) {
         // Reset once past actuation point
         case AnalogTriggerType::RAPID_TRIGGER:
-            if (button.distance <= ANALOG_BUTTON_ACTUATION_POINT - ANALOG_BUTTON_RELEASE_THRESHOLD) {
+            if (button.distance <= analogButtonOptions.analogButtons[button.index].actuationOptions.actuationPoint - analogButtonOptions.analogButtons[button.index].actuationOptions.releaseThreshold) {
                 button.inRapidTriggerZone = false;
             }
             break;
         // Reset once fully released
         case AnalogTriggerType::CONTINUOUS_RAPID_TRIGGER:
-            if (button.distance <= CONTINUOUS_RAPID_THRESHOLD) {
+            if (button.distance <= CONTINUOUS_RAPID_TRIGGER_THRESHOLD) {
                 button.inRapidTriggerZone = false;
             }
             break;
     }
 
     // Press and set in RTZ once past actuation point
-    if (button.distance >= ANALOG_BUTTON_ACTUATION_POINT && !button.inRapidTriggerZone) {
+    if (button.distance >= analogButtonOptions.analogButtons[button.index].actuationOptions.actuationPoint && !button.inRapidTriggerZone) {
         button.inRapidTriggerZone = true;
         button.pressed = true;
 
     // Press if button is in RTZ and has moved sufficiently downwards to trigger again
-    } else if (!button.pressed && button.inRapidTriggerZone && button.distance >= button.localMax + ANALOG_BUTTON_PRESS_THRESHOLD) {
+    } else if (!button.pressed && button.inRapidTriggerZone && button.distance >= button.localMax + analogButtonOptions.analogButtons[button.index].actuationOptions.pressThreshold) {
         button.pressed = true;
 
     // Release button if either not in RTZ or is in RTZ, but has moved sufficiently upwards
-    } else if (button.pressed && (!button.inRapidTriggerZone || button.distance <= button.localMax - ANALOG_BUTTON_RELEASE_THRESHOLD)) {
+    } else if (button.pressed && (!button.inRapidTriggerZone || button.distance <= button.localMax - analogButtonOptions.analogButtons[button.index].actuationOptions.releaseThreshold)) {
         button.pressed = false;
     }
 
