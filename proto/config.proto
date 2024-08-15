@@ -774,7 +774,7 @@ message ActuationOptions
 
 message AnalogButtonPerButton
 {
-    optional int32 pin = 1
+    optional int32 pin = 1;
     optional GpioAction gpioAction = 2;
     optional int32 enabledPerKeySettings = 3;
     optional ActuationOptions actuationOptions = 4;

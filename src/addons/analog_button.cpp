@@ -10,7 +10,7 @@
 #include "analog_button.h"
 
 #define ADC_PIN_OFFSET 26
-#define NUM_ADC_PINS 1
+#define NUM_ADC_PINS 4
 
 bool AnalogButtonAddon::available() {
     return Storage::getInstance().getAddonOptions().analogButtonOptions.enabled;
@@ -68,41 +68,41 @@ void AnalogButtonAddon::printGpioAction(GpioAction gpioAction) {
     switch (gpioAction)
     {
     case GpioAction::ANALOG_LS_DIRECTION_UP:
-        printf("ANALOG_LS_DIRECTION_UP\n");
+        printf("LSU ");
         break;
     case GpioAction::ANALOG_LS_DIRECTION_DOWN:
-        printf("ANALOG_LS_DIRECTION_DOWN\n");
+        printf("LSD ");
         break;
     case GpioAction::ANALOG_LS_DIRECTION_LEFT:
-        printf("ANALOG_LS_DIRECTION_LEFT\n");
+        printf("LSL ");
         break;
     case GpioAction::ANALOG_LS_DIRECTION_RIGHT:
-        printf("ANALOG_LS_DIRECTION_RIGHT\n");
+        printf("LSR ");
         break;
     case GpioAction::ANALOG_RS_DIRECTION_UP:
-        printf("ANALOG_RS_DIRECTION_UP\n");
+        printf("RSU ");
         break;
     case GpioAction::ANALOG_RS_DIRECTION_DOWN:
-        printf("ANALOG_RS_DIRECTION_DOWN\n");
+        printf("RSD ");
         break;
     case GpioAction::ANALOG_RS_DIRECTION_LEFT:
-        printf("ANALOG_RS_DIRECTION_LEFT\n");
+        printf("RS  ");
         break;
     case GpioAction::ANALOG_RS_DIRECTION_RIGHT:
-        printf("ANALOG_RS_DIRECTION_RIGHT\n");
+        printf("RSR ");
         break;
     case GpioAction::ANALOG_TRIGGER_L2:
-        printf("ANALOG_TRIGGER_L2\n");
+        printf("LT  ");
         break;
     case GpioAction::ANALOG_TRIGGER_R2:
-        printf("ANALOG_TRIGGER_R2\n");
+        printf("RT  ");
         break;
         break;
     case GpioAction::NONE:
-        printf("NONE\n");
+        printf("NON ");
         break;
     default:
-        printf("OTHER/MISSING\n");
+        printf("O/M ");
         break;
     }
 }
@@ -131,7 +131,11 @@ void AnalogButtonAddon::readButton(AnalogButton &button) {
 
     button.distance = constrain(map(button.smaValue, button.restPosition, button.downPosition, 0, ANALOG_BUTTON_TOTAL_TRAVEL), 0, ANALOG_BUTTON_TOTAL_TRAVEL);
 
-    printf("%1.2fmm ", (float)button.distance / 100.0);
+    // printGpioAction(button.gpioMappingInfo.action);
+    // printf("%4u ", button.smaValue);
+    // printf("%4u ", button.restPosition);
+    // printf("%4u ", button.downPosition);
+    // printf("%1.2fmm ", (float)button.distance / 100.0);
 }
 // 
 void AnalogButtonAddon::queueAnalogChange(AnalogButton button) {
@@ -141,6 +145,11 @@ void AnalogButtonAddon::queueAnalogChange(AnalogButton button) {
         button.downPosition,
         button.smaValue,
     };
+
+    // printGpioAction(analogChange.gpioAction);
+    // printf("%4u ", analogChange.restPosition);
+    // printf("%4u ", analogChange.downPosition);
+    // printf("%4u ", analogChange.newValue);
     analogChangeQueue.push(analogChange);
 }
 
@@ -173,11 +182,16 @@ void AnalogButtonAddon::updateAnalogState() {
         int16_t downPosition = analogChangeQueue.front().downPosition;
         int16_t newValue = analogChangeQueue.front().newValue;
 
+        // printGpioAction(gpioAction);
+        // printf("%4u ", restPosition);
+        // printf("%4u ", downPosition);
+        // printf("%4u ", newValue);
+
         float deltaPercent = 0.0;
 
         //TODO: Update logic to handle multiple buttons assigned to analog directions
-        if ((newValue - downPosition) > ANALOG_BUTTON_DEADZONE) {
-            deltaPercent = constrain((float)(newValue - downPosition) / (float)(restPosition - downPosition), 0.0, 1.0);
+        if ((newValue - restPosition) > ANALOG_BUTTON_DEADZONE) {
+            deltaPercent = constrain((float)(newValue - restPosition) / (float)(downPosition - restPosition), 0.0, 1.0);
             switch(gpioAction) {
                 case GpioAction::ANALOG_LS_DIRECTION_UP:
                     deltaPercentLY -= deltaPercent;
@@ -242,12 +256,12 @@ void AnalogButtonAddon::updateAnalogState() {
     deltaRX = (int16_t)(deltaPercentRX * joystickMid);
 
     
-    printf("%5u ", deltaLY);
-    printf("%5u ", deltaLX);
-    printf("%5u ", deltaRY);
-    printf("%5u ", deltaRX);
-    printf("%5u ", deltaLT);
-    printf("%5u ", deltaRT);
+    // printf("%5u ", deltaLY);
+    // printf("%5u ", deltaLX);
+    // printf("%5u ", deltaRY);
+    // printf("%5u ", deltaRX);
+    // printf("%5u ", deltaLT);
+    // printf("%5u ", deltaRT);
 
     gamepad->state.ly = constrain((int16_t)GAMEPAD_JOYSTICK_MID + deltaLY, GAMEPAD_JOYSTICK_MIN, GAMEPAD_JOYSTICK_MAX);
     gamepad->state.lx = constrain((int16_t)GAMEPAD_JOYSTICK_MID + deltaLX, GAMEPAD_JOYSTICK_MIN, GAMEPAD_JOYSTICK_MAX);
@@ -289,9 +303,10 @@ void AnalogButtonAddon::updateButtonRange(AnalogButton &button) {
 
     // printf("%4u ", upperValue);  
     // printf("%4u ", lowerValue);  
-    printf("%4u ", button.smaValue);  
+    // printf("%4u ", button.smaValue);  
     // printf("%4u ", button.restPosition);
     // printf("%4u ", button.downPosition);
+    // printf("%4u ", button.localMax);
 
 }
 
@@ -300,7 +315,7 @@ void AnalogButtonAddon::processDigitalButton(AnalogButton &button) {
     Gamepad *gamepad = Storage::getInstance().GetGamepad();
 
     switch (ANALOG_BUTTON_TRIGGER_MODE) {
-        case AnalogTriggerMode::STATIC_TRIGGER:
+        case AnalogTriggerType::STATIC_TRIGGER:
             if(button.distance > ANALOG_BUTTON_ACTUATION_POINT) {
                 triggerButtonPress(button);
             }
@@ -316,13 +331,13 @@ void AnalogButtonAddon::rapidTrigger(AnalogButton &button) {
     // Reset RapidTrigger state if button leaves the rapid trigger zone
     switch(ANALOG_BUTTON_TRIGGER_MODE) {
         // Reset once past actuation point
-        case AnalogTriggerMode::RAPID_TRIGGER:
+        case AnalogTriggerType::RAPID_TRIGGER:
             if (button.distance <= ANALOG_BUTTON_ACTUATION_POINT - ANALOG_BUTTON_RELEASE_THRESHOLD) {
                 button.inRapidTriggerZone = false;
             }
             break;
         // Reset once fully released
-        case AnalogTriggerMode::CONTINUOUS_RAPID_TRIGGER:
+        case AnalogTriggerType::CONTINUOUS_RAPID_TRIGGER:
             if (button.distance <= CONTINUOUS_RAPID_THRESHOLD) {
                 button.inRapidTriggerZone = false;
             }

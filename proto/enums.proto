@@ -433,4 +433,4 @@ enum AnalogTriggerType
     STATIC_TRIGGER = 0;
     RAPID_TRIGGER = 1;
     CONTINUOUS_RAPID_TRIGGER = 2;
-}
+};
