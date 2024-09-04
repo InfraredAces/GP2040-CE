@@ -63,7 +63,7 @@
 #endif
 
 #ifndef ANALOG_BUTTON_00_ACTION
-#define ANALOG_BUTTON_00_ACTION GpioAction::ANALOG_LS_DIRECTION_UP
+#define ANALOG_BUTTON_00_ACTION GpioAction::BUTTON_PRESS_UP
 #endif
 
 #ifndef ANALOG_BUTTON_01_PIN
@@ -71,7 +71,7 @@
 #endif
 
 #ifndef ANALOG_BUTTON_01_ACTION
-#define ANALOG_BUTTON_01_ACTION GpioAction::ANALOG_LS_DIRECTION_DOWN
+#define ANALOG_BUTTON_01_ACTION GpioAction::BUTTON_PRESS_DOWN
 #endif
 
 #ifndef ANALOG_BUTTON_02_PIN
@@ -79,11 +79,45 @@
 #endif
 
 #ifndef ANALOG_BUTTON_02_ACTION
-#define ANALOG_BUTTON_02_ACTION GpioAction::ANALOG_LS_DIRECTION_LEFT
+#define ANALOG_BUTTON_02_ACTION GpioAction::BUTTON_PRESS_LEFT
 #endif
 
 #ifndef ANALOG_BUTTON_03_PIN
 #define ANALOG_BUTTON_03_PIN 28
+#endif
+
+#ifndef ANALOG_BUTTON_03_ACTION
+#define ANALOG_BUTTON_03_ACTION GpioAction::BUTTON_PRESS_RIGHT
+#endif
+
+// DELETE ABOVE PINS AND ACTIONS WHEN FLASH IS EXPANDED
+
+#ifndef ANALOG_BUTTON_00_PIN
+#define ANALOG_BUTTON_00_PIN -1
+#endif
+
+#ifndef ANALOG_BUTTON_00_ACTION
+#define ANALOG_BUTTON_00_ACTION GpioAction::ANALOG_LS_DIRECTION_UP
+#endif
+
+#ifndef ANALOG_BUTTON_01_PIN
+#define ANALOG_BUTTON_01_PIN -1
+#endif
+
+#ifndef ANALOG_BUTTON_01_ACTION
+#define ANALOG_BUTTON_01_ACTION GpioAction::ANALOG_LS_DIRECTION_DOWN
+#endif
+
+#ifndef ANALOG_BUTTON_02_PIN
+#define ANALOG_BUTTON_02_PIN -1
+#endif
+
+#ifndef ANALOG_BUTTON_02_ACTION
+#define ANALOG_BUTTON_02_ACTION GpioAction::ANALOG_LS_DIRECTION_LEFT
+#endif
+
+#ifndef ANALOG_BUTTON_03_PIN
+#define ANALOG_BUTTON_03_PIN -1
 #endif
 
 #ifndef ANALOG_BUTTON_03_ACTION
@@ -266,13 +300,15 @@
 #define ANALOG_BUTTON_25_ACTION GpioAction::BUTTON_PRESS_A2
 #endif
 
+#define ANALOG_RESOLUTION 12
+#define NUM_ANALOG_BUTTONS 4
+#define constrain(amt, low, high) ((amt) < (low) ? (low) : ((amt) > (high) ? (high) : (amt)))
+
 /*
 ---------------------------
   Analog Button State
 ---------------------------
 */
-
-#define ANALOG_RESOLUTION 12
 
 struct AnalogButton {
     uint16_t index = 0;
@@ -303,10 +339,6 @@ struct AnalogChange {
 ---------------------------
 */
 
-#define NUM_ANALOG_BUTTONS 4
-
-#define constrain(amt, low, high) ((amt) < (low) ? (low) : ((amt) > (high) ? (high) : (amt)))
-
 #define AnalogButtonName "AnalogButton"
 
 class AnalogButtonAddon : public GPAddon {
@@ -327,8 +359,11 @@ class AnalogButtonAddon : public GPAddon {
         void rapidTrigger(AnalogButton &button);
         void triggerButtonPress(AnalogButton button);
         void queueAnalogChange(AnalogButton button);
+        void processDPadInputs(AnalogButton button);
         void updateAnalogState();
-        void updateAnalogDPad();
+        void updateDPad();
+        uint8_t runAnalogButtonSOCDCleaner(SOCDMode mode, uint8_t dpad);
+
         AnalogButton analogButtons[NUM_ANALOG_BUTTONS];
         vector<int> analogActions {
             GpioAction::ANALOG_LS_DIRECTION_UP,
@@ -341,6 +376,12 @@ class AnalogButtonAddon : public GPAddon {
             GpioAction::ANALOG_RS_DIRECTION_RIGHT,
             GpioAction::ANALOG_TRIGGER_L2,
             GpioAction::ANALOG_TRIGGER_R2
+        };
+        vector<int> dpadActions {
+            GpioAction::BUTTON_PRESS_UP,
+            GpioAction::BUTTON_PRESS_DOWN,
+            GpioAction::BUTTON_PRESS_LEFT,
+            GpioAction::BUTTON_PRESS_RIGHT
         };
         queue<AnalogChange> analogChangeQueue;
         uint8_t analogButtonDPadState {0};
