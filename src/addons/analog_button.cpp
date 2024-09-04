@@ -32,6 +32,8 @@ void AnalogButtonAddon::setup() {
             adc_gpio_init(analogButtons[i].pin);
         }
     }
+
+    printf("\n");
 } 
 
 void AnalogButtonAddon::preprocess() {
@@ -58,8 +60,6 @@ void AnalogButtonAddon::process() {
 
     updateAnalogState();
     updateDPad();
-    
-    printf("\n");
 }
 
 void AnalogButtonAddon::bootProcess() {
