@@ -45,8 +45,6 @@ void AnalogButtonAddon::process() {
 
     for (size_t i = 0; i < NUM_ANALOG_BUTTONS; i++) {
         if (isValidPin(analogButtons[i].pin)) {
-            // printButtonProp(analogButtons[i], "pin");
-
             readButton(analogButtons[i]);
             if (analogButtons[i].calibrated) {
                 if(find(analogActions.begin(), analogActions.end(), analogButtons[i].gpioMappingInfo.action) != analogActions.end()) {
@@ -57,16 +55,10 @@ void AnalogButtonAddon::process() {
             }   
         }
     }
-    
-    // printb(analogButtonDPadState);
-
-    updateAnalogDPad();
-    
-    // printb(gamepad->state.dpad);
 
     updateAnalogState();
-
-    // printGamepadState("analog");
+    updateDPad();
+    
     printf("\n");
 }
 
@@ -137,12 +129,6 @@ void AnalogButtonAddon::readButton(AnalogButton &button) {
     }
 
     button.distance = constrain(map(button.smaValue, button.restPosition, button.downPosition, 0, analogButtonOptions.totalTravel), 0, analogButtonOptions.totalTravel);
-
-    printGpioAction(button.gpioMappingInfo.action);
-    printf("%4u ", button.smaValue);
-    // printf("%4u ", button.restPosition);
-    // printf("%4u ", button.downPosition);
-    // printf("%1.2fmm ", (float)button.distance / 100.0);
 }
 
 void AnalogButtonAddon::updateButtonRange(AnalogButton &button) {
@@ -164,30 +150,32 @@ void AnalogButtonAddon::updateButtonRange(AnalogButton &button) {
 
         button.restPosition = lowerValue;
     }
-
-    // printButtonProp(button);
-
 }
 
 void AnalogButtonAddon::processDigitalButton(AnalogButton &button) {
     const AnalogButtonOptions &analogButtonOptions = Storage::getInstance().getAddonOptions().analogButtonOptions;
     Gamepad *gamepad = Storage::getInstance().GetGamepad();
+    DpadMode dpadMode = gamepad->getOptions().dpadMode;
 
-    switch (analogButtonOptions.analogButtons[button.index].actuationOptions.triggerMode) {
-        case AnalogTriggerType::STATIC_TRIGGER:
-            if(button.distance > analogButtonOptions.analogButtons[button.index].actuationOptions.actuationPoint) {
-                triggerButtonPress(button);
-            }
-            break;
-        default:
-            rapidTrigger(button);
-            break;
+    bool isDPadAction = find(dpadActions.begin(), dpadActions.end(), button.gpioMappingInfo.action) != dpadActions.end();
+    if(dpadMode != DPAD_MODE_DIGITAL && isDPadAction) {
+        triggerButtonPress(button);
+    } else {
+        switch (analogButtonOptions.analogButtons[button.index].actuationOptions.triggerMode) {
+            case AnalogTriggerType::STATIC_TRIGGER:
+                if(button.distance > analogButtonOptions.analogButtons[button.index].actuationOptions.actuationPoint) {
+                    triggerButtonPress(button);
+                }
+                break;
+            default:
+                rapidTrigger(button);
+                break;
+        }
     }
 }
 
 void AnalogButtonAddon::rapidTrigger(AnalogButton &button) {
     const AnalogButtonOptions &analogButtonOptions = Storage::getInstance().getAddonOptions().analogButtonOptions;
-
 
     // Reset RapidTrigger state if button leaves the rapid trigger zone
     switch(analogButtonOptions.analogButtons[button.index].actuationOptions.triggerMode) {
@@ -233,19 +221,18 @@ void AnalogButtonAddon::triggerButtonPress(AnalogButton button) {
     const AnalogButtonOptions &analogButtonOptions = Storage::getInstance().getAddonOptions().analogButtonOptions;
     Gamepad *gamepad = Storage::getInstance().GetGamepad();
 
-    //TODO: Add SOCD Cleaning to DPad inputs
     switch (button.gpioMappingInfo.action) {
         case GpioAction::BUTTON_PRESS_UP:
-            analogButtonDPadState |= GAMEPAD_MASK_UP;
+            processDPadInputs(button);
             break;
         case GpioAction::BUTTON_PRESS_DOWN:
-            analogButtonDPadState |= GAMEPAD_MASK_DOWN;
+            processDPadInputs(button);
             break;
         case GpioAction::BUTTON_PRESS_LEFT:
-            analogButtonDPadState |= GAMEPAD_MASK_LEFT;
+            processDPadInputs(button);
             break;
         case GpioAction::BUTTON_PRESS_RIGHT:
-            analogButtonDPadState |= GAMEPAD_MASK_RIGHT;
+            processDPadInputs(button);
             break;
         case GpioAction::BUTTON_PRESS_B1:
             gamepad->state.buttons |= GAMEPAD_MASK_B1;
@@ -297,6 +284,57 @@ void AnalogButtonAddon::triggerButtonPress(AnalogButton button) {
     }
 }
 
+void AnalogButtonAddon::processDPadInputs(AnalogButton button) {
+    Gamepad *gamepad = Storage::getInstance().GetGamepad();
+    DpadMode dpadMode = gamepad->getOptions().dpadMode;
+    AnalogChange digitalAnalogChange = {NONE, button.restPosition, button.downPosition, button.smaValue};
+    
+    switch (button.gpioMappingInfo.action) {
+        case GpioAction::BUTTON_PRESS_UP:
+            if(dpadMode == DPAD_MODE_LEFT_ANALOG) {
+                digitalAnalogChange.gpioAction = ANALOG_LS_DIRECTION_UP;
+            } else if(dpadMode == DPAD_MODE_RIGHT_ANALOG) {
+                digitalAnalogChange.gpioAction = ANALOG_RS_DIRECTION_UP;
+            } else {
+                analogButtonDPadState |= GAMEPAD_MASK_UP;
+            }
+            break;
+        case GpioAction::BUTTON_PRESS_DOWN:
+            if(dpadMode == DPAD_MODE_LEFT_ANALOG) {
+                digitalAnalogChange.gpioAction = ANALOG_LS_DIRECTION_DOWN;
+            } else if(dpadMode == DPAD_MODE_RIGHT_ANALOG) {
+                digitalAnalogChange.gpioAction = ANALOG_RS_DIRECTION_DOWN;
+            } else {
+                analogButtonDPadState |= GAMEPAD_MASK_DOWN;
+            }
+            break;
+        case GpioAction::BUTTON_PRESS_LEFT:
+            if(dpadMode == DPAD_MODE_LEFT_ANALOG) {
+                digitalAnalogChange.gpioAction = ANALOG_LS_DIRECTION_LEFT;
+            } else if(dpadMode == DPAD_MODE_RIGHT_ANALOG) {
+                digitalAnalogChange.gpioAction = ANALOG_RS_DIRECTION_LEFT;
+            } else {
+                analogButtonDPadState |= GAMEPAD_MASK_LEFT;
+            }
+            break;
+        case GpioAction::BUTTON_PRESS_RIGHT:
+            if(dpadMode == DPAD_MODE_LEFT_ANALOG) {
+                digitalAnalogChange.gpioAction = ANALOG_LS_DIRECTION_RIGHT;
+            } else if(dpadMode == DPAD_MODE_RIGHT_ANALOG) {
+                digitalAnalogChange.gpioAction = ANALOG_RS_DIRECTION_RIGHT;
+            } else {
+                analogButtonDPadState |= GAMEPAD_MASK_RIGHT;
+            }
+            break;
+        default:
+            break;
+    }
+
+    if (digitalAnalogChange.gpioAction != NONE) {
+        analogChangeQueue.push(digitalAnalogChange);
+    }
+}
+
 void AnalogButtonAddon::queueAnalogChange(AnalogButton button) {
     AnalogChange analogChange = {
         button.gpioMappingInfo.action,
@@ -304,11 +342,6 @@ void AnalogButtonAddon::queueAnalogChange(AnalogButton button) {
         button.downPosition,
         button.smaValue,
     };
-
-    // printGpioAction(analogChange.gpioAction);
-    // printButtonProp( button,"restPosition");
-    // printButtonProp( button,"downPosition");
-    // printButtonProp( button,"newValue");
 
     analogChangeQueue.push(analogChange);
 }
@@ -408,8 +441,6 @@ void AnalogButtonAddon::updateAnalogState() {
     deltaRY = (int16_t)(deltaPercentRY * joystickMid);
     deltaRX = (int16_t)(deltaPercentRX * joystickMid);
 
-    // printGamepadState("analog");
-
     gamepad->state.ly = constrain((int16_t)GAMEPAD_JOYSTICK_MID + deltaLY, GAMEPAD_JOYSTICK_MIN, GAMEPAD_JOYSTICK_MAX);
     gamepad->state.lx = constrain((int16_t)GAMEPAD_JOYSTICK_MID + deltaLX, GAMEPAD_JOYSTICK_MIN, GAMEPAD_JOYSTICK_MAX);
     gamepad->state.ry = constrain((int16_t)GAMEPAD_JOYSTICK_MID + deltaRY, GAMEPAD_JOYSTICK_MIN, GAMEPAD_JOYSTICK_MAX);
@@ -419,13 +450,85 @@ void AnalogButtonAddon::updateAnalogState() {
 
 }
 
-void AnalogButtonAddon::updateAnalogDPad() {
+void AnalogButtonAddon::updateDPad() {
     Gamepad *gamepad = Storage::getInstance().GetGamepad();
     SOCDMode socdMode = gamepad->resolveSOCDMode(gamepad->getOptions());
+    DpadMode dpadMode = gamepad->getOptions().dpadMode;
 
-    // printSOCDMode(socdMode);
+    analogButtonDPadState = runAnalogButtonSOCDCleaner(socdMode, analogButtonDPadState);
+    
+    if(dpadMode == DPAD_MODE_DIGITAL) {
+        gamepad->state.dpad = analogButtonDPadState;
+    }
+}
 
-    gamepad->state.dpad = runSOCDCleaner(socdMode, analogButtonDPadState);
+uint8_t AnalogButtonAddon::runAnalogButtonSOCDCleaner(SOCDMode mode, uint8_t dpad) {
+	if (mode == SOCD_MODE_BYPASS) {
+		return dpad;
+	}
+
+	static DpadDirection lastUD = DIRECTION_NONE;
+	static DpadDirection lastLR = DIRECTION_NONE;
+	uint8_t newDpad = 0;
+
+	switch (dpad & (GAMEPAD_MASK_UP | GAMEPAD_MASK_DOWN))
+	{
+		case (GAMEPAD_MASK_UP | GAMEPAD_MASK_DOWN):
+			if (mode == SOCD_MODE_UP_PRIORITY)
+			{
+				newDpad |= GAMEPAD_MASK_UP;
+				lastUD = DIRECTION_UP;
+			}
+			else if (mode == SOCD_MODE_SECOND_INPUT_PRIORITY && lastUD != DIRECTION_NONE)
+				newDpad |= (lastUD == DIRECTION_UP) ? GAMEPAD_MASK_DOWN : GAMEPAD_MASK_UP;
+			else if (mode == SOCD_MODE_FIRST_INPUT_PRIORITY && lastUD != DIRECTION_NONE)
+				newDpad |= (lastUD == DIRECTION_UP) ? GAMEPAD_MASK_UP : GAMEPAD_MASK_DOWN;
+			else
+				lastUD = DIRECTION_NONE;
+			break;
+
+		case GAMEPAD_MASK_UP:
+			newDpad |= GAMEPAD_MASK_UP;
+			lastUD = DIRECTION_UP;
+			break;
+
+		case GAMEPAD_MASK_DOWN:
+			newDpad |= GAMEPAD_MASK_DOWN;
+			lastUD = DIRECTION_DOWN;
+			break;
+
+		default:
+			lastUD = DIRECTION_NONE;
+			break;
+	}
+
+	switch (dpad & (GAMEPAD_MASK_LEFT | GAMEPAD_MASK_RIGHT))
+	{
+		case (GAMEPAD_MASK_LEFT | GAMEPAD_MASK_RIGHT):
+			if (mode == SOCD_MODE_SECOND_INPUT_PRIORITY && lastLR != DIRECTION_NONE)
+				newDpad |= (lastLR == DIRECTION_LEFT) ? GAMEPAD_MASK_RIGHT : GAMEPAD_MASK_LEFT;
+			else if (mode == SOCD_MODE_FIRST_INPUT_PRIORITY && lastLR != DIRECTION_NONE)
+				newDpad |= (lastLR == DIRECTION_LEFT) ? GAMEPAD_MASK_LEFT : GAMEPAD_MASK_RIGHT;
+			else
+				lastLR = DIRECTION_NONE;
+			break;
+
+		case GAMEPAD_MASK_LEFT:
+			newDpad |= GAMEPAD_MASK_LEFT;
+			lastLR = DIRECTION_LEFT;
+			break;
+
+		case GAMEPAD_MASK_RIGHT:
+			newDpad |= GAMEPAD_MASK_RIGHT;
+			lastLR = DIRECTION_RIGHT;
+			break;
+
+		default:
+			lastLR = DIRECTION_NONE;
+			break;
+	}
+
+	return newDpad;
 }
 
 //TODO: DEBUG - Remove once complete
