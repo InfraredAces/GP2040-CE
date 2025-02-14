@@ -17,6 +17,8 @@
 #include "config.pb.h"
 #include <atomic>
 #include "pico/critical_section.h"
+#include "eventmanager.h"
+#include "GPStorageSaveEvent.h"
 
 #define SI Storage::getInstance()
 
@@ -49,6 +51,7 @@ public:
 
 	void init();
 	bool save();
+	bool save(const bool force);
 
 	// Perform saves that were enqueued from core1
 	void performEnqueuedSaves();

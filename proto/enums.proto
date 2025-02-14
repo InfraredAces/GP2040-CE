@@ -84,6 +84,8 @@ enum ButtonLayoutRight
     BUTTON_LAYOUT_6GAWD_ALLBUTTON_B = 35;
     BUTTON_LAYOUT_6GAWD_ALLBUTTONPLUS_B = 36;
     BUTTON_LAYOUT_STICKLESS_R16B = 37;
+    BUTTON_LAYOUT_VLXB_6B = 38;
+    BUTTON_LAYOUT_SEGA2P_6B = 39;
 }
 
 enum SplashMode
@@ -243,16 +245,37 @@ enum GpioAction
     BUTTON_PRESS_E10             = 52;
     BUTTON_PRESS_E11             = 53;
     BUTTON_PRESS_E12             = 54;
-    ANALOG_LS_DIRECTION_UP       = 55;
-    ANALOG_LS_DIRECTION_DOWN     = 56;
-    ANALOG_LS_DIRECTION_LEFT     = 57;
-    ANALOG_LS_DIRECTION_RIGHT    = 58;
-    ANALOG_RS_DIRECTION_UP       = 59;
-    ANALOG_RS_DIRECTION_DOWN     = 60;
-    ANALOG_RS_DIRECTION_LEFT     = 61;
-    ANALOG_RS_DIRECTION_RIGHT    = 62;
-    ANALOG_TRIGGER_L2            = 63;
-    ANALOG_TRIGGER_R2            = 64;
+
+    DIGITAL_DIRECTION_UP         = 55;
+    DIGITAL_DIRECTION_DOWN       = 56;
+    DIGITAL_DIRECTION_LEFT       = 57;
+    DIGITAL_DIRECTION_RIGHT      = 58;
+    ANALOG_DIRECTION_LS_X_NEG    = 59;
+    ANALOG_DIRECTION_LS_X_POS    = 60;
+    ANALOG_DIRECTION_LS_Y_NEG    = 61;
+    ANALOG_DIRECTION_LS_Y_POS    = 62;
+    ANALOG_DIRECTION_RS_X_NEG    = 63;
+    ANALOG_DIRECTION_RS_X_POS    = 64;
+    ANALOG_DIRECTION_RS_Y_NEG    = 65;
+    ANALOG_DIRECTION_RS_Y_POS    = 66;
+    ANALOG_DIRECTION_MOD_LOW     = 67;
+    ANALOG_DIRECTION_MOD_HIGH    = 68;
+
+    BUTTON_PRESS_INPUT_REVERSE   = 69;
+    SUSTAIN_FOCUS_MODE           = 70;
+
+    SUSTAIN_4_8_WAY_MODE         = 71;
+    
+    MENU_NAVIGATION_UP           = 72;
+    MENU_NAVIGATION_DOWN         = 73;
+    MENU_NAVIGATION_LEFT         = 74;
+    MENU_NAVIGATION_RIGHT        = 75;
+    MENU_NAVIGATION_SELECT       = 76;
+    MENU_NAVIGATION_BACK         = 77;
+    MENU_NAVIGATION_TOGGLE       = 78;
+
+    ANALOG_TRIGGER_L2            = 79;
+    ANALOG_TRIGGER_R2            = 80;
 }
 
 
@@ -311,6 +334,14 @@ enum GamepadHotkey
     HOTKEY_DPAD_LEFT             = 40;
     HOTKEY_DPAD_RIGHT            = 41;
     HOTKEY_PREVIOUS_PROFILE      = 42;
+    HOTKEY_SAVE_CONFIG           = 43;
+    HOTKEY_MENU_NAV_UP           = 44;
+    HOTKEY_MENU_NAV_DOWN         = 45;
+    HOTKEY_MENU_NAV_LEFT         = 46;
+    HOTKEY_MENU_NAV_RIGHT        = 47;
+    HOTKEY_MENU_NAV_SELECT       = 48;
+    HOTKEY_MENU_NAV_BACK         = 49;
+    HOTKEY_MENU_NAV_TOGGLE       = 50;
 }
 
 // This has to be kept in sync with LEDFormat in NeoPico.hpp
@@ -337,6 +368,14 @@ enum PLEDType
     PLED_TYPE_NONE = -1;
     PLED_TYPE_PWM = 0;
     PLED_TYPE_RGB = 1;
+};
+
+enum CaseRGBType
+{
+    option (nanopb_enumopt).long_names = false;
+
+    CASE_RGB_TYPE_NONE = -1;
+    CASE_RGB_TYPE_STATIC = 0;
 };
 
 enum ForcedSetupMode
@@ -415,6 +454,7 @@ enum RotaryEncoderPinMode
     ENCODER_MODE_RIGHT_TRIGGER = 6;
     ENCODER_MODE_DPAD_X = 7;
     ENCODER_MODE_DPAD_Y = 8;
+    ENCODER_MODE_VOLUME = 9;
 };
 
 enum ReactiveLEDMode
@@ -433,6 +473,47 @@ enum PS4ControllerIDMode
 
     PS4_ID_CONSOLE = 0;
     PS4_ID_EMULATION = 1;
+};
+
+enum DisplaySaverMode
+{
+    option (nanopb_enumopt).long_names = false;
+
+    DISPLAY_SAVER_DISPLAY_OFF = 0;
+    DISPLAY_SAVER_SNOW = 1;
+    DISPLAY_SAVER_BOUNCE = 2;
+    DISPLAY_SAVER_PIPES = 3;
+    DISPLAY_SAVER_TOAST = 4;
+};
+
+enum ButtonLayoutOrientation
+{
+    option (nanopb_enumopt).long_names = false;
+
+    BUTTON_ORIENTATION_DEFAULT = 0;
+    BUTTON_ORIENTATION_SOUTHPAW = 1;
+    BUTTON_ORIENTATION_SWITCHED = 2;
+};
+
+enum GPEventType
+{
+    option (nanopb_enumopt).long_names = false;
+
+    GP_EVENT_BASE = 0;
+    GP_EVENT_RESTART = 1;
+    GP_EVENT_USBHOST_MOUNT = 2;
+    GP_EVENT_USBHOST_UNMOUNT = 3;
+    GP_EVENT_PROFILE_CHANGE = 4;
+    GP_EVENT_ENCODER_CHANGE = 5;
+    GP_EVENT_BUTTON_UP = 6;
+    GP_EVENT_BUTTON_DOWN = 7;
+    GP_EVENT_BUTTON_PROCESSED_UP = 8;
+    GP_EVENT_BUTTON_PROCESSED_DOWN = 9;
+    GP_EVENT_ANALOG_MOVE = 10;
+    GP_EVENT_ANALOG_PROCESSED_MOVE = 11;
+    GP_EVENT_STORAGE_SAVE = 12;
+    GP_EVENT_SYSTEM_REBOOT = 13;
+    GP_EVENT_MENU_NAVIGATE = 14;
 };
 
 enum AnalogTriggerType

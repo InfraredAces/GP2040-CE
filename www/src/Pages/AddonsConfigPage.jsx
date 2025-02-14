@@ -9,6 +9,8 @@ import set from 'lodash/set';
 
 import { AppContext } from '../Contexts/AppContext';
 
+import { hexToInt } from '../Services/Utilities';
+
 import WebApi from '../Services/WebApi';
 import Analog, { analogScheme, analogState } from '../Addons/Analog';
 import Analog1256, {
@@ -44,10 +46,7 @@ import FocusMode, {
 	focusModeState,
 } from '../Addons/FocusMode';
 import Keyboard, { keyboardScheme, keyboardState } from '../Addons/Keyboard';
-import InputHistory, {
-	inputHistoryScheme,
-	inputHistoryState,
-} from '../Addons/InputHistory';
+import GamepadUSBHost, { gamepadUSBHostScheme, gamepadUSBHostState} from '../Addons/GamepadUSBHost';
 import Rotary, { rotaryScheme, rotaryState } from '../Addons/Rotary';
 import PCF8575, { pcf8575Scheme, pcf8575State } from '../Addons/PCF8575';
 import DRV8833Rumble, {
@@ -58,6 +57,7 @@ import ReactiveLED, {
 	reactiveLEDScheme,
 	reactiveLEDState,
 } from '../Addons/ReactiveLED';
+import { rgbIntToHex } from '../Services/Utilities';
 
 const schema = yup.object().shape({
 	...analogScheme,
@@ -75,11 +75,11 @@ const schema = yup.object().shape({
 	...wiiScheme,
 	...focusModeScheme,
 	...keyboardScheme,
-	...inputHistoryScheme,
 	...rotaryScheme,
 	...pcf8575Scheme,
 	...drv8833RumbleScheme,
 	...reactiveLEDScheme,
+	...gamepadUSBHostScheme,
 });
 
 const defaultValues = {
@@ -99,11 +99,11 @@ const defaultValues = {
 	...snesState,
 	...focusModeState,
 	...keyboardState,
-	...inputHistoryState,
 	...rotaryState,
 	...pcf8575State,
 	...drv8833RumbleState,
 	...reactiveLEDState,
+	...gamepadUSBHostState,
 };
 
 const ADDONS = [
@@ -123,7 +123,7 @@ const ADDONS = [
 	SNES,
 	FocusMode,
 	Keyboard,
-	InputHistory,
+	GamepadUSBHost,
 	Rotary,
 	PCF8575,
 	DRV8833Rumble,
@@ -192,13 +192,19 @@ export default function AddonsConfigPage() {
 
 	const onSuccess = async (values) => {
 		const flattened = flattenObject(storedData);
-		const valuesCopy = schema.cast(values); // Strip invalid values
+
+        // Convert turbo LED color if available
+        const data = {
+            ...values,
+            turboLedColor: hexToInt(values.turboLedColor || '#000000')
+        };
+		const valuesSchema = schema.cast(data); // Strip invalid values
 
 		// Compare what's changed and set it to resultObject
 		let resultObject = {};
 		Object.entries(flattened)?.map((entry) => {
 			const [key, oldVal] = entry;
-			const newVal = get(valuesCopy, key);
+			const newVal = get(valuesSchema, key);
 			if (newVal !== oldVal) {
 				set(resultObject, key, newVal);
 			}

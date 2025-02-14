@@ -186,6 +186,7 @@ src/display/ui/elements/GPWidget.cpp
 src/display/ui/elements/GPButton.cpp
 src/display/ui/elements/GPLever.cpp
 src/display/ui/elements/GPLabel.cpp
+src/display/ui/elements/GPMenu.cpp
 src/display/ui/elements/GPScreen.cpp
 src/display/ui/elements/GPShape.cpp
 src/display/ui/elements/GPSprite.cpp
@@ -193,11 +194,14 @@ src/display/ui/screens/ButtonLayoutScreen.cpp
 src/display/ui/screens/ConfigScreen.cpp
 src/display/ui/screens/MainMenuScreen.cpp
 src/display/ui/screens/PinViewerScreen.cpp
+src/display/ui/screens/RestartScreen.cpp
 src/display/ui/screens/StatsScreen.cpp
 src/display/ui/screens/SplashScreen.cpp
+src/display/ui/screens/DisplaySaverScreen.cpp
 src/display/GPGFX.cpp
 src/display/GPGFX_UI.cpp
 src/drivermanager.cpp
+src/eventmanager.cpp
 src/layoutmanager.cpp
 src/peripheralmanager.cpp
 src/storagemanager.cpp
@@ -232,6 +236,8 @@ src/addons/input_macro.cpp
 src/addons/snes_input.cpp
 src/addons/tilt.cpp
 src/addons/spi_analog_ads1256.cpp
+src/addons/gamepad_usb_host.cpp
+src/addons/gamepad_usb_host_listener.cpp
 src/addons/analog_button.cpp
 ${PROTO_OUTPUT_DIR}/enums.pb.c
 ${PROTO_OUTPUT_DIR}/config.pb.c
@@ -271,6 +277,7 @@ headers
 headers/addons
 headers/configs
 headers/drivers
+headers/events
 headers/interfaces
 headers/interfaces/i2c
 headers/interfaces/i2c/ads1219
